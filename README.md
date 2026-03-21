@@ -1,6 +1,6 @@
 # Pilot Banana 🍌
 
-**Your AI-Powered Co-pilot for Social Media Mastery.**
+Social media automation.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Tech Stack](https://img.shields.io/badge/Stack-Azure%20%7C%20React%2019%20%7C%20Gemini-blue.svg)]()
