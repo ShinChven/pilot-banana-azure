@@ -11,14 +11,12 @@ Pilot Banana is a multi-tenant social media automation platform with **Generativ
 
 ## Why Pilot Banana? 🚀
 
-In a world of constant content, staying relevant requires consistency and scale. Pilot Banana bridges the gap between creative vision and execution:
-
-- 🤖 **AI-First Content:** Leverage Google's Gemini AI to generate high-quality, context-aware posts from simple prompts or complex campaign strategies.
 - 📦 **Batch Efficiency:** Save hours by utilizing powerful **batch generation** and **scheduling** tools to manage hundreds of posts simultaneously.
 - 🚀 **Orchestrated Campaigns:** Move beyond single posts. Design multi-phase, **cross-platform** campaigns that run themselves while you focus on the big picture.
 - 🔒 **Modern Security:** Say goodbye to forgotten passwords. Pilot Banana features native **Passkey** support for seamless, biometric-grade security.
 - ☁️ **Cloud-Native Scale:** Built with Azure Functions, Cosmos DB, and Blob Storage to ensure your automation scales from a single account to thousands without breaking a sweat.
 - 🎨 **Next-Gen Frontend:** A lightning-fast dashboard built with **React 19**, **Tailwind CSS 4**, and **Framer Motion** for a premium, "app-like" experience.
+- 🤖 **AI Content:** Leverage Google's Gemini AI to generate high-quality, context-aware posts from simple prompts or complex campaign strategies.
 
 ---
 
