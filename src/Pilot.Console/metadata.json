@@ -1,0 +1,5 @@
+{
+  "name": "Nexus Dashboard",
+  "description": "A comprehensive React dashboard scaffolding featuring analytics, user management, and customer profiles built with shadcn/ui and React Router.",
+  "requestFramePermissions": []
+}

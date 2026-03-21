@@ -1,0 +1,33 @@
+{
+  "version": "2.0",
+  "logging": {
+    "applicationInsights": {
+      "samplingSettings": {
+        "isEnabled": true,
+        "excludedTypes": "Request"
+      }
+    },
+    "logLevel": {
+      "default": "Information",
+      "Host.Results": "Error",
+      "Host.Aggregator": "Error",
+      "Microsoft.Azure.WebJobs.Extensions.Storage": "Warning",
+      "Microsoft.Azure.WebJobs.Host.Queues": "Warning",
+      "Azure.Core": "Warning",
+      "Azure.Storage.Queues": "Warning"
+    }
+  },
+  "functionTimeout": "00:10:00",
+  "extensions": {
+    "queues": {
+      "maxPollingInterval": "00:01:00",
+      "batchSize": 4,
+      "newBatchThreshold": 2
+    },
+    "durableTask": {
+      "storageProvider": {
+        "connectionStringName": "AzureWebJobsStorage"
+      }
+    }
+  }
+}

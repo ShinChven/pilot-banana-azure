@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <AzureFunctionsVersion>v4</AzureFunctionsVersion>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Pilot.Api</RootNamespace>
+    <AssemblyName>Pilot.Api</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Azure.Core" Version="1.51.1" />
+    <PackageReference Include="Azure.Storage.Queues" Version="12.19.1" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker" Version="1.21.0" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" Version="1.17.0" OutputItemType="Analyzer" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http" Version="3.1.0" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http.AspNetCore" Version="1.2.0" />
+    <PackageReference Include="Microsoft.ApplicationInsights.WorkerService" Version="2.22.0" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.ApplicationInsights" Version="1.2.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="local.settings.json" CopyToOutputDirectory="PreserveNewest" Link="local.settings.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Pilot.Core\Pilot.Core.csproj" />
+    <ProjectReference Include="..\Pilot.Infrastructure\Pilot.Infrastructure.csproj" />
+    <ProjectReference Include="..\Pilot.Adapters\Pilot.Adapters.csproj" />
+  </ItemGroup>
+</Project>

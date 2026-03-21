@@ -1,0 +1,29 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    "FUNCTIONS_REQUEST_BODY_SIZE_LIMIT": "104857600",
+    "Cosmos__Endpoint": "https://your-account.documents.azure.com:443/",
+    "Cosmos__Key": "your-key",
+    "Cosmos__DatabaseId": "pilot-banana",
+    "Blob__ConnectionString": "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;",
+    "Blob__ContainerName": "campaign-assets",
+    "KeyVault__VaultUri": "",
+    "Auth__Jwt__Secret": "your-256-bit-secret-at-least-32-chars-long-for-hs256",
+    "Auth__Jwt__Issuer": "pilot-banana",
+    "Auth__Jwt__Audience": "pilot-banana",
+    "Auth__Jwt__ExpiryMinutes": "60",
+    "XOAuth__ClientId": "",
+    "XOAuth__ClientSecret": "",
+    "XOAuth__ApiBaseUrl": "http://localhost:7071",
+    "XOAuth__DashboardBaseUrl": "http://localhost:5173",
+    "Cosmos__UsersContainer": "users",
+    "Cosmos__CampaignsContainer": "campaigns",
+    "Cosmos__PostsContainer": "posts",
+    "Cosmos__ChannelLinksContainer": "channelLinks",
+    "Cosmos__PromptsContainer": "prompts",
+    "Cosmos__PostHistoryContainer": "postHistory",
+    "GEMINI_API_KEY": "YOUR_GEMINI_API_KEY"
+  }
+}

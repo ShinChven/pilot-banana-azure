@@ -1,0 +1,29 @@
+# Mock/local backend: Cosmos DB Emulator + Azurite (Blob + Queue).
+# Run: docker compose up -d
+# Then create Cosmos DB and containers (see docs/LOCAL.md or scripts/init-cosmos).
+
+services:
+  cosmos:
+    image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
+    ports:
+      - "8081:8081"   # Cosmos gateway (use https://localhost:8081 in app config)
+      - "1234:1234"   # Data Explorer (http://localhost:1234)
+    command: ["--protocol", "https"]
+    # .NET SDK requires HTTPS; default key is in docs/LOCAL.md and .env.example
+
+    volumes:
+      - pb-cosmos-data:/var/lib/cosmosdb
+
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite
+    ports:
+      - "10000:10000"  # Blob
+      - "10001:10001"  # Queue
+      - "10002:10002"  # Table
+    command: azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --skipApiVersionCheck
+    volumes:
+      - pb-azurite-data:/data
+
+volumes:
+  pb-azurite-data:
+  pb-cosmos-data:
