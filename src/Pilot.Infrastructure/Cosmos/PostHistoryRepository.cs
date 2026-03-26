@@ -116,27 +116,36 @@ public class PostHistoryRepository : IPostHistoryRepository
         return (list, total);
     }
 
-    public async Task<IEnumerable<PostCountByDate>> GetPostCountsByDateAsync(string userId, DateTimeOffset since, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<PostCountByDate>> GetPostCountsByDateAsync(string userId, DateTimeOffset since, int timezoneOffsetMinutes, CancellationToken cancellationToken = default)
     {
+        // Fetch raw timestamps; grouping happens in C# using the user's local timezone offset.
+        // JS getTimezoneOffset() returns (UTC - local) in minutes, so negate to get the UTC offset.
+        var localOffset = TimeSpan.FromMinutes(-timezoneOffsetMinutes);
+
         var query = new QueryDefinition(@"
-            SELECT c.date, c.count FROM (
-                SELECT SUBSTRING(c.postedAt, 0, 10) as date, COUNT(1) as count
-                FROM c
-                WHERE c.userId = @userId AND c.postedAt >= @since AND c.status = 'Completed'
-                GROUP BY SUBSTRING(c.postedAt, 0, 10)
-            ) c")
+            SELECT c.postedAt
+            FROM c
+            WHERE c.userId = @userId AND c.postedAt >= @since AND c.status = 'Completed'")
             .WithParameter("@userId", userId)
             .WithParameter("@since", since.ToString("O"));
 
-        var iterator = _container.GetItemQueryIterator<PostCountByDate>(query);
-        var result = new List<PostCountByDate>();
+        var timestamps = new List<string>();
+        var iterator = _container.GetItemQueryIterator<PostHistoryTimestamp>(query);
         while (iterator.HasMoreResults)
         {
             var response = await iterator.ReadNextAsync(cancellationToken);
-            result.AddRange(response);
+            timestamps.AddRange(response.Select(r => r.PostedAt));
         }
-        return result.OrderBy(r => r.Date);
+
+        return timestamps
+            .Where(t => DateTimeOffset.TryParse(t, out _))
+            .Select(t => DateTimeOffset.Parse(t).ToOffset(localOffset).Date.ToString("yyyy-MM-dd"))
+            .GroupBy(d => d)
+            .Select(g => new PostCountByDate(g.Key, g.Count()))
+            .OrderBy(r => r.Date);
     }
+
+    private record PostHistoryTimestamp([property: System.Text.Json.Serialization.JsonPropertyName("postedAt")] string PostedAt);
 
     public async Task<IReadOnlyDictionary<string, string>> GetLatestPostUrlsByPostIdsAsync(IEnumerable<string> postIds, CancellationToken cancellationToken = default)
     {

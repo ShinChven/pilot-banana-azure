@@ -10,6 +10,8 @@ public record PostResponse(
     string UserId,
     string? Text,
     List<string> MediaUrls,
+    List<string>? OptimizedUrls,
+    List<string>? ThumbnailUrls,
     DateTimeOffset? ScheduledTime,
     PostStatus Status,
     Dictionary<string, object> PlatformData,

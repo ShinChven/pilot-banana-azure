@@ -10,6 +10,7 @@ namespace Pilot.Orchestration.Functions;
 
 public class MinuteHeartbeat
 {
+    private static readonly TimeSpan PendingRecoveryAge = TimeSpan.FromMinutes(15);
     private readonly ILogger _logger;
     private readonly IPostRepository _postRepository;
     private readonly QueueClient _queueClient;
@@ -32,6 +33,20 @@ public class MinuteHeartbeat
     {
         var now = DateTimeOffset.UtcNow;
         _logger.LogInformation("Heartbeat triggered at {Time:O}", now);
+
+        var stalePendingCutoff = now.Subtract(PendingRecoveryAge);
+        var stalePendingPosts = await _postRepository.GetStaleByStatusAsync(PostStatus.Pending, stalePendingCutoff, cancellationToken);
+        foreach (var stalePost in stalePendingPosts)
+        {
+            var recovered = await _postRepository.TryTransitionStatusAsync(stalePost.CampaignId, stalePost.Id, PostStatus.Pending, PostStatus.Scheduled, cancellationToken);
+            if (recovered)
+            {
+                _logger.LogWarning(
+                    "Recovered stale in-flight post {PostId} back to Scheduled. Last update was {UpdatedAt:O}.",
+                    stalePost.Id,
+                    stalePost.UpdatedAt);
+            }
+        }
 
         var allPosts = await _postRepository.ListAllAsync(cancellationToken);
         _logger.LogInformation("Debug total posts in DB: {Count}", allPosts.Count);
@@ -57,7 +72,7 @@ public class MinuteHeartbeat
         {
             try
             {
-                // 1. Keep post in Scheduled while dispatching
+                // 1. Touch the post so stale in-flight recovery can reason about recent dispatch activity
                 post.UpdatedAt = DateTimeOffset.UtcNow;
                 await _postRepository.UpdateAsync(post, cancellationToken);
 

@@ -70,17 +70,23 @@ public class DashboardStatsFunction
         
         var recentHistory = historyItems.Select(i => {
             var channel = channels.FirstOrDefault(c => c.Id == i.ChannelLinkId);
+            var campaign = campaigns.FirstOrDefault(c => c.Id == i.CampaignId);
             return new PostHistoryDto(
                 i.Id, i.CampaignId, i.UserId, i.PostId, i.ChannelLinkId, i.Platform, i.ExternalPostId, i.PostUrl, i.PostedAt, i.Status, i.ErrorMessage,
                 AvatarUrl: channel?.AvatarUrl,
                 DisplayName: channel?.DisplayName,
-                Username: channel?.Username
+                Username: channel?.Username,
+                CampaignName: campaign?.Name
             );
         }).ToList();
 
-        // 5. Automation Overview (Last 30 days)
-        var thirtyDaysAgo = DateTimeOffset.UtcNow.AddDays(-30);
-        var counts = await _historyRepo.GetPostCountsByDateAsync(userId, thirtyDaysAgo, cancellationToken);
+        // 5. Automation Overview (grouped by user's local date)
+        var query = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
+        int.TryParse(query["timezoneOffset"], out var timezoneOffsetMinutes);
+        if (!int.TryParse(query["days"], out var days) || days <= 0) days = 7;
+        // Add 1 day buffer so the UTC window covers the full local day range at any timezone
+        var thirtyDaysAgo = DateTimeOffset.UtcNow.AddDays(-(days + 1));
+        var counts = await _historyRepo.GetPostCountsByDateAsync(userId, thirtyDaysAgo, timezoneOffsetMinutes, cancellationToken);
         var automationOverview = counts.ToList();
 
         var response = req.CreateResponse(HttpStatusCode.OK);

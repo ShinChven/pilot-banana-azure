@@ -33,8 +33,10 @@ export interface ScheduledPost {
   id: string;
   content: string;
   images?: string[];
+  optimizedUrls?: string[];
+  thumbnailUrls?: string[];
   scheduledAt?: string;
-  status: 'Draft' | 'Scheduled' | 'Posted' | 'Failed' | 'Generating';
+  status: 'Draft' | 'Scheduled' | 'Pending' | 'Posted' | 'Failed' | 'Generating';
   channels: string[]; // IDs of channels
   postUrl?: string;
 }
@@ -49,6 +51,8 @@ export interface Campaign {
   channels: string[]; // IDs of channels
   posts: ScheduledPost[];
   thumbnail: string;
+  totalPosts?: number;
+  postedPosts?: number;
 }
 
 export interface Prompt {
@@ -76,6 +80,7 @@ export interface PostHistoryItem {
   avatarUrl?: string;
   displayName?: string;
   username?: string;
+  campaignName?: string;
 }
 
 export interface PaginatedList<T> {

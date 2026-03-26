@@ -47,7 +47,8 @@ import {
   ChevronRight,
   Loader2,
   Sparkles,
-  ExternalLink
+  ExternalLink,
+  Pencil
 } from 'lucide-react';
 import { motion, AnimatePresence, Reorder } from "motion/react";
 import { XIcon } from '@/src/components/XIcon';
@@ -73,6 +74,7 @@ import { getCampaign, updateCampaign, type CampaignResponse } from '../api/campa
 import { listPosts, deletePost, sendPost, updatePost, batchUnschedulePosts, type PostResponse } from '../api/posts';
 import { listChannels } from '../api/channels';
 import { BatchAiGenerateModal } from '../components/BatchAiGenerateModal';
+import { getPostMediaKindFromUrl, getPostPreviewUrl } from '@/src/lib/post-media';
 
 /**
  * Formats a Date object to the YYYY-MM-DDTHH:mm format required by <input type="datetime-local" />
@@ -88,7 +90,7 @@ function toDatetimeLocal(date: Date): string {
 }
 
 function isVideo(url: string) {
-  return url.toLowerCase().endsWith('.mp4') || url.includes('video');
+  return getPostMediaKindFromUrl(url) === 'video';
 }
 
 const MediaElement = ({ 
@@ -256,11 +258,65 @@ const Lightbox = ({
   );
 };
 
-const PostMedia = ({ images }: { images?: string[] }) => {
+const PostMedia = ({ images, thumbs, opts }: { images?: string[], thumbs?: string[], opts?: string[] }) => {
   const [lightboxOpen, setLightboxOpen] = React.useState(false);
   const [selectedIndex, setSelectedIndex] = React.useState(0);
 
   if (!images || images.length === 0) return null;
+
+  const previewItems = images.map((image, index) => ({
+    source: getPostPreviewUrl(image, thumbs?.[index], opts?.[index]),
+    kind: getPostMediaKindFromUrl(image)
+  }));
+  const fullImages = images;
+
+  const renderPreview = (index: number, className?: string, alt?: string, featured = false) => {
+    const item = previewItems[index];
+    if (!item) return null;
+
+    if (item.kind === 'video') {
+      const previewKind = getPostMediaKindFromUrl(item.source);
+
+      return (
+        <div className={cn("relative overflow-hidden", featured && "bg-black/5")}>
+          {previewKind === 'image' ? (
+            <img
+              src={item.source}
+              alt={alt}
+              className={className}
+              onClick={() => openLightbox(index)}
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <video
+              src={item.source}
+              className={className}
+              onClick={() => openLightbox(index)}
+              muted
+              playsInline
+              autoPlay
+              loop
+              preload="metadata"
+            />
+          )}
+          <div className="absolute inset-0 flex items-center justify-center bg-black/20 pointer-events-none">
+            <div className="rounded-full bg-white/20 p-2 backdrop-blur-sm">
+              <div className="ml-0.5 h-0 w-0 border-b-[6px] border-l-[10px] border-t-[6px] border-b-transparent border-l-white border-t-transparent" />
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <MediaElement
+        src={item.source}
+        alt={alt}
+        className={className}
+        onClick={() => openLightbox(index)}
+      />
+    );
+  };
 
   const openLightbox = (index: number) => {
     setSelectedIndex(index);
@@ -276,14 +332,10 @@ const PostMedia = ({ images }: { images?: string[] }) => {
           className="relative aspect-video w-full overflow-hidden rounded-xl border border-slate-200/60 shadow-sm cursor-zoom-in"
           onClick={() => openLightbox(0)}
         >
-          <MediaElement
-            src={images[0]}
-            alt="Post content"
-            className="h-full w-full object-cover transition-transform duration-500 hover:scale-105"
-          />
+          {renderPreview(0, "h-full w-full object-cover transition-transform duration-500 hover:scale-105", "Post content", true)}
         </div>
         <Lightbox
-          images={images}
+          images={fullImages}
           initialIndex={selectedIndex}
           isOpen={lightboxOpen}
           onClose={() => setLightboxOpen(false)}
@@ -296,18 +348,14 @@ const PostMedia = ({ images }: { images?: string[] }) => {
     return (
       <>
         <div className="grid grid-cols-2 gap-1.5 aspect-video w-full overflow-hidden rounded-xl border border-slate-200/60 shadow-sm">
-          {images.map((img, i) => (
-            <MediaElement
-              key={i}
-              src={img}
-              alt={`Post content ${i + 1}`}
-              className="h-full w-full object-cover transition-transform duration-500 hover:scale-105 cursor-zoom-in"
-              onClick={() => openLightbox(i)}
-            />
+          {previewItems.map((_, i) => (
+            <React.Fragment key={i}>
+              {renderPreview(i, "h-full w-full object-cover transition-transform duration-500 hover:scale-105 cursor-zoom-in", `Post content ${i + 1}`)}
+            </React.Fragment>
           ))}
         </div>
         <Lightbox
-          images={images}
+          images={fullImages}
           initialIndex={selectedIndex}
           isOpen={lightboxOpen}
           onClose={() => setLightboxOpen(false)}
@@ -320,27 +368,12 @@ const PostMedia = ({ images }: { images?: string[] }) => {
     return (
       <>
         <div className="grid grid-cols-3 grid-rows-2 gap-1.5 aspect-video w-full overflow-hidden rounded-xl border border-slate-200/60 shadow-sm">
-          <MediaElement
-            src={images[0]}
-            alt="Post content 1"
-            className="col-span-2 row-span-2 h-full w-full object-cover transition-transform duration-500 hover:scale-105 cursor-zoom-in"
-            onClick={() => openLightbox(0)}
-          />
-          <MediaElement
-            src={images[1]}
-            alt="Post content 2"
-            className="h-full w-full object-cover transition-transform duration-500 hover:scale-105 cursor-zoom-in"
-            onClick={() => openLightbox(1)}
-          />
-          <MediaElement
-            src={images[2]}
-            alt="Post content 3"
-            className="h-full w-full object-cover transition-transform duration-500 hover:scale-105 cursor-zoom-in"
-            onClick={() => openLightbox(2)}
-          />
+          {renderPreview(0, "col-span-2 row-span-2 h-full w-full object-cover transition-transform duration-500 hover:scale-105 cursor-zoom-in", "Post content 1", true)}
+          {renderPreview(1, "h-full w-full object-cover transition-transform duration-500 hover:scale-105 cursor-zoom-in", "Post content 2")}
+          {renderPreview(2, "h-full w-full object-cover transition-transform duration-500 hover:scale-105 cursor-zoom-in", "Post content 3")}
         </div>
         <Lightbox
-          images={images}
+          images={fullImages}
           initialIndex={selectedIndex}
           isOpen={lightboxOpen}
           onClose={() => setLightboxOpen(false)}
@@ -353,18 +386,14 @@ const PostMedia = ({ images }: { images?: string[] }) => {
     return (
       <>
         <div className="grid grid-cols-2 grid-rows-2 gap-1.5 aspect-video w-full overflow-hidden rounded-xl border border-slate-200/60 shadow-sm">
-          {images.map((img, i) => (
-            <MediaElement
-              key={i}
-              src={img}
-              alt={`Post content ${i + 1}`}
-              className="h-full w-full object-cover transition-transform duration-500 hover:scale-105 cursor-zoom-in"
-              onClick={() => openLightbox(i)}
-            />
+          {previewItems.map((_, i) => (
+            <React.Fragment key={i}>
+              {renderPreview(i, "h-full w-full object-cover transition-transform duration-500 hover:scale-105 cursor-zoom-in", `Post content ${i + 1}`)}
+            </React.Fragment>
           ))}
         </div>
         <Lightbox
-          images={images}
+          images={fullImages}
           initialIndex={selectedIndex}
           isOpen={lightboxOpen}
           onClose={() => setLightboxOpen(false)}
@@ -377,27 +406,13 @@ const PostMedia = ({ images }: { images?: string[] }) => {
   return (
     <>
       <div className="grid grid-cols-3 grid-rows-2 gap-1.5 aspect-video w-full overflow-hidden rounded-xl border border-slate-200/60 shadow-sm">
-        <MediaElement
-          src={images[0]}
-          alt="Post content 1"
-          className="col-span-2 row-span-2 h-full w-full object-cover transition-transform duration-500 hover:scale-105 cursor-zoom-in"
-          onClick={() => openLightbox(0)}
-        />
-        <MediaElement
-          src={images[1]}
-          alt="Post content 2"
-          className="h-full w-full object-cover transition-transform duration-500 hover:scale-105 cursor-zoom-in"
-          onClick={() => openLightbox(1)}
-        />
+        {renderPreview(0, "col-span-2 row-span-2 h-full w-full object-cover transition-transform duration-500 hover:scale-105 cursor-zoom-in", "Post content 1", true)}
+        {renderPreview(1, "h-full w-full object-cover transition-transform duration-500 hover:scale-105 cursor-zoom-in", "Post content 2")}
         <div
           className="relative h-full w-full overflow-hidden cursor-zoom-in"
           onClick={() => openLightbox(2)}
         >
-          <MediaElement
-            src={images[2]}
-            alt="Post content 3"
-            className="h-full w-full object-cover transition-transform duration-500 hover:scale-105"
-          />
+          {renderPreview(2, "h-full w-full object-cover transition-transform duration-500 hover:scale-105", "Post content 3")}
           {count > 3 && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-[2px] text-white font-bold text-xl transition-colors hover:bg-black/40">
               +{count - 3}
@@ -406,7 +421,7 @@ const PostMedia = ({ images }: { images?: string[] }) => {
         </div>
       </div>
       <Lightbox
-        images={images}
+        images={fullImages}
         initialIndex={selectedIndex}
         isOpen={lightboxOpen}
         onClose={() => setLightboxOpen(false)}
@@ -421,7 +436,8 @@ export default function CampaignProfilePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { token, user } = useAuth();
   const [searchQuery, setSearchQuery] = React.useState(searchParams.get('q') || '');
-  const [sortBy, setSortBy] = React.useState<'date-desc' | 'date-asc' | 'content'>('date-desc');
+  const sortBy = searchParams.get('sortBy') || 'scheduledTime';
+  const sortOrder = searchParams.get('sortOrder') || 'desc';
   const statusFilter = searchParams.get('status');
 
   const [campaign, setCampaign] = React.useState<Campaign | null>(null);
@@ -464,7 +480,17 @@ export default function CampaignProfilePage() {
       const [campRes, chanRes, postRes] = await Promise.all([
         getCampaign(id, token),
         listChannels(token, 1, 100),
-        listPosts(user.id, id, token, page, pageSize, statusFilter || undefined, searchParams.get('q') || undefined)
+        listPosts(
+          user.id, 
+          id, 
+          token, 
+          page, 
+          pageSize, 
+          statusFilter || undefined, 
+          searchParams.get('q') || undefined,
+          sortBy,
+          sortOrder
+        )
       ]);
 
       if (campRes.data) {
@@ -475,10 +501,12 @@ export default function CampaignProfilePage() {
           description: c.description || `Created on ${new Date(c.createdAt).toLocaleDateString()}`,
           status: c.status === 'Active' ? 'Active' : 'Inactive',
           startDate: new Date(c.createdAt).toLocaleDateString(),
-          endDate: '-',
+          endDate: c.endDate ? new Date(c.endDate).toLocaleDateString() : '-',
           channels: c.channelLinkIds,
           posts: [],
-          thumbnail: ''
+          thumbnail: '',
+          totalPosts: c.totalPosts,
+          postedPosts: c.postedPosts
         });
       }
 
@@ -503,6 +531,8 @@ export default function CampaignProfilePage() {
           id: p.id,
           content: p.text || '',
           images: p.mediaUrls || [],
+          thumbnailUrls: p.thumbnailUrls || [],
+          optimizedUrls: p.optimizedUrls || [],
           scheduledAt: p.scheduledTime || '',
           status: p.status as any,
           channels: campRes.data?.channelLinkIds || [],
@@ -514,7 +544,7 @@ export default function CampaignProfilePage() {
     } finally {
       if (!silent) setIsLoading(false);
     }
-  }, [token, id, user, page, pageSize, statusFilter, searchParams]);
+  }, [token, id, user, page, pageSize, statusFilter, searchParams, sortBy, sortOrder]);
 
   React.useEffect(() => {
     fetchData();
@@ -534,21 +564,7 @@ export default function CampaignProfilePage() {
 
   const connectedChannels = channels.filter(ch => campaign?.channels.includes(ch.id));
 
-  const filteredPosts = [...posts]
-    .sort((a, b) => {
-      if (sortBy === 'date-desc') {
-        if (!a.scheduledAt) return 1;
-        if (!b.scheduledAt) return -1;
-        return new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime();
-      }
-      if (sortBy === 'date-asc') {
-        if (!a.scheduledAt) return 1;
-        if (!b.scheduledAt) return -1;
-        return new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime();
-      }
-      if (sortBy === 'content') return a.content.localeCompare(b.content);
-      return 0;
-    });
+  const filteredPosts = posts;
 
   const totalPages = Math.ceil(totalItems / pageSize);
 
@@ -573,10 +589,10 @@ export default function CampaignProfilePage() {
         if (error) {
             toast.error('Failed to delete post', { description: error });
         } else {
-            setPosts(prev => prev.filter(p => p.id !== postId));
             toast.success("Post deleted");
             setIsDeleteDialogOpen(false);
             setPostToDelete(null);
+            fetchData(true);
         }
     } catch (err) {
         toast.error('Error deleting post');
@@ -594,7 +610,10 @@ export default function CampaignProfilePage() {
       sendPost(user.id, id, postId, token),
       {
         loading: 'Sending post to target channels...',
-        success: 'Post has been sent successfully!',
+        success: () => {
+          fetchData(true);
+          return 'Post has been sent successfully!';
+        },
         error: (err) => `Failed to send post: ${err.message}`,
       }
     );
@@ -749,18 +768,18 @@ export default function CampaignProfilePage() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">
-                {posts.length > 0
-                    ? Math.round((posts.filter(p => p.status === 'Posted').length / posts.length) * 100)
+                {campaign.totalPosts && campaign.totalPosts > 0
+                    ? Math.round(((campaign.postedPosts || 0) / campaign.totalPosts) * 100)
                     : 0}%
               </div>
               <div className="mt-2 h-1.5 w-full bg-primary-foreground/20 rounded-full overflow-hidden">
                 <div
                     className="h-full bg-primary-foreground w-[0%]"
-                    style={{ width: `${posts.length > 0 ? (posts.filter(p => p.status === 'Posted').length / posts.length) * 100 : 0}%` }}
+                    style={{ width: `${campaign.totalPosts && campaign.totalPosts > 0 ? ((campaign.postedPosts || 0) / campaign.totalPosts) * 100 : 0}%` }}
                 />
               </div>
               <p className="mt-2 text-xs opacity-80">
-                {posts.filter(p => p.status === 'Posted').length} of {posts.length} posts published
+                {campaign.postedPosts || 0} of {campaign.totalPosts || 0} posts published
               </p>
               <Button
                 variant={campaign.status === 'Active' ? "outline" : "secondary"}
@@ -888,18 +907,52 @@ export default function CampaignProfilePage() {
 
               <DropdownMenu>
                 <DropdownMenuTrigger render={(props) => (
-                  <Button {...props} variant="outline" size="sm" className="h-9 gap-2 border-muted-foreground/10 text-muted-foreground flex-1 sm:flex-none justify-between sm:justify-center min-w-[110px]">
+                  <Button {...props} variant="outline" size="sm" className="h-9 gap-2 border-muted-foreground/10 text-muted-foreground flex-1 sm:flex-none justify-between sm:justify-center min-w-[140px] rounded-xl">
                     <SortAsc className="w-3.5 h-3.5" />
-                    Sort
+                    {sortBy === 'scheduledTime' ? 'Scheduled Time' : 'Creation Date'}
                     <ChevronDown className="w-3 h-3 opacity-50" />
                   </Button>
                 )} nativeButton={true} />
-                <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuContent align="end" className="min-w-[14rem] rounded-xl border-muted-foreground/10">
                   <DropdownMenuLabel>Sort Options</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setSortBy('date-desc')}>Newest First</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setSortBy('date-asc')}>Oldest First</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setSortBy('content')}>Content (A-Z)</DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => updateQueryParams({ sortBy: 'scheduledTime', sortOrder: 'asc', page: 1 })}
+                    className="grid grid-cols-[1fr_20px] items-center gap-2"
+                  >
+                    <span>Scheduled (Soonest First)</span>
+                    <div className="flex justify-center text-primary font-bold">
+                      {sortBy === 'scheduledTime' && sortOrder === 'asc' && '✓'}
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => updateQueryParams({ sortBy: 'scheduledTime', sortOrder: 'desc', page: 1 })}
+                    className="grid grid-cols-[1fr_20px] items-center gap-2"
+                  >
+                    <span>Scheduled (Latest First)</span>
+                    <div className="flex justify-center text-primary font-bold">
+                      {sortBy === 'scheduledTime' && sortOrder === 'desc' && '✓'}
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    onClick={() => updateQueryParams({ sortBy: 'createdAt', sortOrder: 'desc', page: 1 })}
+                    className="grid grid-cols-[1fr_20px] items-center gap-2"
+                  >
+                    <span>Created (Newest First)</span>
+                    <div className="flex justify-center text-primary font-bold">
+                      {sortBy === 'createdAt' && sortOrder === 'desc' && '✓'}
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => updateQueryParams({ sortBy: 'createdAt', sortOrder: 'asc', page: 1 })}
+                    className="grid grid-cols-[1fr_20px] items-center gap-2"
+                  >
+                    <span>Created (Oldest First)</span>
+                    <div className="flex justify-center text-primary font-bold">
+                      {sortBy === 'createdAt' && sortOrder === 'asc' && '✓'}
+                    </div>
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -959,6 +1012,15 @@ export default function CampaignProfilePage() {
                       <Button
                         variant="ghost"
                         size="icon"
+                        className="h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-full"
+                        title="Edit Post"
+                        onClick={() => handleEditPost(post)}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         className="h-9 w-9 text-primary hover:bg-primary/5 rounded-full"
                         title="AI Generate"
                         onClick={() => {
@@ -984,7 +1046,7 @@ export default function CampaignProfilePage() {
                       {post.content}
                     </p>
 
-                    <PostMedia images={post.images} />
+                    <PostMedia images={post.images} thumbs={post.thumbnailUrls} opts={post.optimizedUrls} />
                   </div>
 
                   <div className="pt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t border-muted-foreground/5">
@@ -1028,14 +1090,6 @@ export default function CampaignProfilePage() {
                             disabled={campaign.status !== 'Active'}
                           >
                             <Send className="w-3.5 h-3.5" /> {post.status === 'Posted' ? 'Send Again' : 'Send Now'}
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-muted-foreground hover:text-foreground h-10 px-5 rounded-full border-muted-foreground/10 font-bold w-full sm:w-auto"
-                            onClick={() => handleEditPost(post)}
-                          >
-                            Edit Post
                           </Button>
                           {!post.scheduledAt && (
                             <Button

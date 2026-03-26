@@ -9,6 +9,9 @@ export interface CampaignResponse {
   status: string;
   createdAt: string;
   updatedAt: string | null;
+  totalPosts: number;
+  postedPosts: number;
+  endDate: string | null;
 }
 
 export interface CreateCampaignRequest {

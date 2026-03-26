@@ -10,6 +10,14 @@ import {
 import { Button } from "@/src/components/ui/button";
 import { Badge } from "@/src/components/ui/badge";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/src/components/ui/dropdown-menu";
+import {
   Calendar as CalendarIcon,
   Clock,
   List,
@@ -20,7 +28,10 @@ import {
   ExternalLink,
   Layers,
   Send,
-  ArrowRight
+  ArrowRight,
+  SortAsc,
+  ChevronDown,
+  Image as ImageIcon
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { listUserPosts, type PostResponse } from '../api/posts';
@@ -28,6 +39,7 @@ import { toast } from 'sonner';
 import { cn } from '@/src/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/src/components/ui/tabs";
 import { Input } from "@/src/components/ui/input";
+import { getPostMediaKindFromUrl, getPostPreviewUrl } from '@/src/lib/post-media';
 
 export default function ScheduledPostsPage() {
   const navigate = useNavigate();
@@ -36,12 +48,14 @@ export default function ScheduledPostsPage() {
   const [posts, setPosts] = React.useState<PostResponse[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [searchQuery, setSearchQuery] = React.useState(searchParams.get('q') || '');
-  
+  const sortBy = searchParams.get('sortBy') || 'scheduledTime';
+  const sortOrder = searchParams.get('sortOrder') || 'asc';
+
   // Pagination State from URL
   const page = parseInt(searchParams.get('page') || '1', 10);
   const pageSize = parseInt(searchParams.get('pageSize') || '25', 10);
   const [totalItems, setTotalItems] = React.useState(0);
-  
+
   // Calendar state
   const [currentMonth, setCurrentMonth] = React.useState(new Date());
 
@@ -57,8 +71,17 @@ export default function ScheduledPostsPage() {
     if (!token || !user) return;
     if (!silent) setIsLoading(true);
     try {
-      const { data, error } = await listUserPosts(user.id, token, page, pageSize, 'Scheduled', searchParams.get('q') || undefined);
-      
+      const { data, error } = await listUserPosts(
+        user.id,
+        token,
+        page,
+        pageSize,
+        'Scheduled',
+        searchParams.get('q') || undefined,
+        sortBy,
+        sortOrder
+      );
+
       if (data) {
         setPosts(data.items);
         setTotalItems(data.total);
@@ -70,7 +93,7 @@ export default function ScheduledPostsPage() {
     } finally {
       if (!silent) setIsLoading(false);
     }
-  }, [token, user, page, pageSize, searchParams]);
+  }, [token, user, page, pageSize, searchParams, sortBy, sortOrder]);
 
   // Fetch all scheduled posts for calendar (simplified: just fetch 100 for now)
   const [allScheduledPosts, setAllScheduledPosts] = React.useState<PostResponse[]>([]);
@@ -102,20 +125,25 @@ export default function ScheduledPostsPage() {
     const month = currentMonth.getMonth();
     const days = daysInMonth(year, month);
     const firstDay = firstDayOfMonth(year, month);
-    
+
     const calendarDays = [];
     // Padding for first day
     for (let i = 0; i < firstDay; i++) {
       calendarDays.push(<div key={`pad-${i}`} className="h-24 border-r border-b bg-muted/5" />);
     }
-    
+
     for (let d = 1; d <= days; d++) {
       const date = new Date(year, month, d);
-      const dateStr = date.toISOString().split('T')[0];
-      
-      const dayPosts = allScheduledPosts.filter(p => p.scheduledTime && p.scheduledTime.startsWith(dateStr));
+      // Compare by local date (year, month, day) regardless of time zone or string format
+      const dayPosts = allScheduledPosts.filter(p => {
+        if (!p.scheduledTime) return false;
+        const sched = new Date(p.scheduledTime);
+        return sched.getFullYear() === date.getFullYear() &&
+               sched.getMonth() === date.getMonth() &&
+               sched.getDate() === date.getDate();
+      });
       const isToday = new Date().toDateString() === date.toDateString();
-      
+
       calendarDays.push(
         <div key={d} className={cn(
           "h-24 border-r border-b p-2 flex flex-col gap-1 transition-colors hover:bg-muted/30",
@@ -125,7 +153,7 @@ export default function ScheduledPostsPage() {
             "text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full",
             isToday ? "bg-primary text-primary-foreground" : "text-muted-foreground"
           )}>{d}</span>
-          
+
           {dayPosts.length > 0 && (
             <div className="mt-1 flex flex-col gap-1">
               <div className="bg-amber-500/10 text-amber-600 text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center justify-between">
@@ -164,18 +192,71 @@ export default function ScheduledPostsPage() {
             </TabsTrigger>
           </TabsList>
 
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search posts..."
-              className="pl-10 h-10 bg-card border-muted-foreground/10 transition-all rounded-xl"
-              value={searchQuery}
-              onChange={(e) => { 
-                const q = e.target.value;
-                setSearchQuery(q); 
-                updateQueryParams({ q, page: 1 });
-              }}
-            />
+          <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search posts..."
+                className="pl-10 h-10 bg-card border-muted-foreground/10 transition-all rounded-xl"
+                value={searchQuery}
+                onChange={(e) => {
+                  const q = e.target.value;
+                  setSearchQuery(q);
+                  updateQueryParams({ q, page: 1 });
+                }}
+              />
+            </div>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger render={(props) => (
+                <Button {...props} variant="outline" size="sm" className="h-10 gap-2 border-muted-foreground/10 text-muted-foreground flex-1 sm:flex-none justify-between sm:justify-center min-w-[140px] rounded-xl">
+                  <SortAsc className="w-3.5 h-3.5" />
+                  {sortBy === 'scheduledTime' ? 'Scheduled Time' : 'Creation Date'}
+                  <ChevronDown className="w-3 h-3 opacity-50" />
+                </Button>
+              )} nativeButton={true} />
+              <DropdownMenuContent align="end" className="min-w-[14rem] rounded-xl border-muted-foreground/10">
+                <DropdownMenuLabel>Sort Options</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => updateQueryParams({ sortBy: 'scheduledTime', sortOrder: 'asc', page: 1 })}
+                  className="grid grid-cols-[1fr_20px] items-center gap-2"
+                >
+                  <span>Scheduled (Soonest First)</span>
+                  <div className="flex justify-center text-primary font-bold">
+                    {sortBy === 'scheduledTime' && sortOrder === 'asc' && '✓'}
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => updateQueryParams({ sortBy: 'scheduledTime', sortOrder: 'desc', page: 1 })}
+                  className="grid grid-cols-[1fr_20px] items-center gap-2"
+                >
+                  <span>Scheduled (Latest First)</span>
+                  <div className="flex justify-center text-primary font-bold">
+                    {sortBy === 'scheduledTime' && sortOrder === 'desc' && '✓'}
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => updateQueryParams({ sortBy: 'createdAt', sortOrder: 'desc', page: 1 })}
+                  className="grid grid-cols-[1fr_20px] items-center gap-2"
+                >
+                  <span>Created (Newest First)</span>
+                  <div className="flex justify-center text-primary font-bold">
+                    {sortBy === 'createdAt' && sortOrder === 'desc' && '✓'}
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => updateQueryParams({ sortBy: 'createdAt', sortOrder: 'asc', page: 1 })}
+                  className="grid grid-cols-[1fr_20px] items-center gap-2"
+                >
+                  <span>Created (Oldest First)</span>
+                  <div className="flex justify-center text-primary font-bold">
+                    {sortBy === 'createdAt' && sortOrder === 'asc' && '✓'}
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
@@ -202,50 +283,101 @@ export default function ScheduledPostsPage() {
                 </CardContent>
               </Card>
             ) : (
-              posts.map((post) => (
-                <Card key={post.id} className="overflow-hidden border-muted-foreground/5 hover:border-primary/20 transition-all group hover:shadow-lg hover:shadow-primary/5 rounded-2xl">
-                  <div className="p-5 flex flex-col md:flex-row gap-6">
-                    <div className="flex-1 space-y-3">
-                      <div className="flex items-center gap-3">
-                        <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-none font-bold uppercase text-[10px] tracking-widest px-2 py-0.5">
-                          Scheduled
-                        </Badge>
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-semibold">
-                          <Clock className="w-3.5 h-3.5" />
-                          {post.scheduledTime ? new Date(post.scheduledTime).toLocaleString() : 'N/A'}
-                        </div>
-                      </div>
-                      
-                      <p className="text-foreground font-medium line-clamp-2 leading-relaxed">
-                        {post.text || <span className="italic text-muted-foreground">No text content</span>}
-                      </p>
-                      
-                      <div className="flex items-center gap-4 text-xs font-semibold">
-                        <div className="flex items-center gap-1.5 text-primary bg-primary/5 px-2.5 py-1 rounded-full border border-primary/10">
-                          <Layers className="w-3.5 h-3.5" />
-                          {post.campaignName || 'Campaign'}
-                        </div>
-                        {post.mediaUrls && post.mediaUrls.length > 0 && (
-                          <div className="text-muted-foreground flex items-center gap-1">
-                            {post.mediaUrls.length} {post.mediaUrls.length === 1 ? 'Media' : 'Media files'}
+              posts.map((post) => {
+                const mediaUrl = post.mediaUrls?.[0] || '';
+                const thumbnailUrl = post.thumbnailUrls?.[0] || '';
+                const optimizedUrl = post.optimizedUrls?.[0] || '';
+                const mediaKind = getPostMediaKindFromUrl(mediaUrl);
+                const previewUrl = getPostPreviewUrl(mediaUrl, thumbnailUrl, optimizedUrl);
+
+                return (
+                <Card key={post.id} className="overflow-hidden border-muted-foreground/10 hover:border-primary/30 transition-all group hover:shadow-md rounded-xl bg-card">
+                  <div className="flex items-center p-3 gap-4">
+                    {/* Media Thumbnail */}
+                    <div className="h-16 w-16 rounded-lg overflow-hidden bg-muted flex-shrink-0 border border-muted-foreground/5 shadow-inner">
+                      {previewUrl ? (
+                        mediaKind === 'video' ? (
+                          <div className="relative h-full w-full">
+                             {getPostMediaKindFromUrl(previewUrl) === 'image' ? (
+                               <img src={previewUrl} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+                             ) : (
+                               <video
+                                 src={previewUrl}
+                                 className="h-full w-full object-cover"
+                                 muted
+                                 playsInline
+                                 autoPlay
+                                 loop
+                                 preload="metadata"
+                               />
+                             )}
+                             <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                               <div className="bg-white/20 backdrop-blur-sm p-1 rounded-full">
+                                 <div className="w-0 h-0 border-t-[4px] border-t-transparent border-l-[6px] border-l-white border-b-[4px] border-b-transparent ml-0.5" />
+                               </div>
+                             </div>
                           </div>
-                        )}
+                        ) : (
+                          <img src={previewUrl} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+                        )
+                      ) : (
+                        <div className="h-full w-full flex items-center justify-center text-muted-foreground/20">
+                          <ImageIcon className="w-6 h-6" />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Content Area */}
+                    <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-primary bg-primary/5 px-2 py-0.5 rounded border border-primary/10">
+                            {post.campaignName || 'Campaign'}
+                          </span>
+                          <Badge variant="outline" className={cn(
+                            "text-[9px] uppercase font-bold px-1.5 h-4 border-none",
+                            post.status === 'Draft' ? "bg-muted text-muted-foreground" :
+                            post.status === 'Scheduled' ? "bg-amber-500/10 text-amber-500" :
+                            post.status === 'Posted' ? "bg-emerald-500/10 text-emerald-500" :
+                            post.status === 'Generating' ? "bg-blue-500/10 text-blue-500" :
+                            "bg-destructive/10 text-destructive"
+                          )}>
+                            {post.status}
+                          </Badge>
+                        </div>
+                        <p className="text-xs font-medium text-foreground truncate max-w-md">
+                          {post.text || <span className="italic text-muted-foreground/50">No text content</span>}
+                        </p>
+                      </div>
+
+                      {/* Scheduling Info */}
+                      <div className="flex flex-col sm:items-end sm:text-right shrink-0">
+                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-bold uppercase tracking-tight">
+                          <Clock className="w-3 h-3" />
+                          {post.scheduledTime ? new Date(post.scheduledTime).toLocaleDateString() : 'N/A'}
+                        </div>
+                        <div className="text-[10px] text-foreground font-medium">
+                          {post.scheduledTime ? new Date(post.scheduledTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                        </div>
                       </div>
                     </div>
-                    
-                    <div className="flex items-center gap-2 self-end md:self-center shrink-0">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="rounded-full gap-2 font-bold hover:bg-primary/5 text-primary"
+
+                    {/* Action */}
+                    <div className="shrink-0 flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 rounded-full text-muted-foreground hover:text-primary hover:bg-primary/5"
                         onClick={() => navigate(`/campaigns/${post.campaignId}`)}
+                        title="Go to Campaign"
                       >
-                        Go to Campaign <ArrowRight className="w-4 h-4" />
+                        <ArrowRight className="w-4 h-4" />
                       </Button>
                     </div>
                   </div>
                 </Card>
-              ))
+                );
+              })
             )}
           </div>
 

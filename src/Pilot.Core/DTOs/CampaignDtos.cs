@@ -12,5 +12,8 @@ public record CampaignResponse(
     IReadOnlyList<string> ChannelLinkIds,
     string Status,
     DateTimeOffset CreatedAt,
-    DateTimeOffset? UpdatedAt
+    DateTimeOffset? UpdatedAt,
+    int TotalPosts = 0,
+    int PostedPosts = 0,
+    DateTimeOffset? EndDate = null
 );

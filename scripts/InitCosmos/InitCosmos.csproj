@@ -9,13 +9,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Pilot.Core\Pilot.Core.csproj" />
-    <ProjectReference Include="..\..\src\Pilot.Infrastructure\Pilot.Infrastructure.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.49.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
   </ItemGroup>
 
 </Project>

@@ -45,85 +45,117 @@ public class PostProcessor
 
         _logger.LogInformation("Processing post {PostId}...", payload.PostId);
 
-        // 1. Fetch Post and verify state
-        var post = await _postRepository.GetByIdAsync(payload.CampaignId, payload.PostId, cancellationToken);
-        if (post == null || post.Status != PostStatus.Scheduled)
+        // Claim the post before any side effects so only one worker can publish it.
+        var claimed = await _postRepository.TryTransitionStatusAsync(
+            payload.CampaignId,
+            payload.PostId,
+            PostStatus.Scheduled,
+            PostStatus.Pending,
+            cancellationToken);
+        if (!claimed)
         {
-            _logger.LogWarning("Post {PostId} not found or not in Scheduled state. Skipping.", payload.PostId);
+            _logger.LogInformation("Post {PostId} was already claimed or is no longer Scheduled. Skipping.", payload.PostId);
             return;
         }
 
-        // 2. Fetch Campaign and verify it's still active
-        var campaign = await _campaignRepository.GetByIdAsync(payload.UserId, payload.CampaignId, cancellationToken);
-        if (campaign == null || campaign.Status != CampaignStatus.Active)
+        try
         {
-            _logger.LogInformation("Campaign {CampaignId} is inactive. Marking post as Failed.", payload.CampaignId);
-            await UpdateStatus(post, PostStatus.Failed, cancellationToken);
-            return;
-        }
-
-        // 3. Resolve Channel Links
-        var allUserLinks = await _channelLinkRepository.ListByUserIdAsync(payload.UserId, cancellationToken);
-        var activeLinks = allUserLinks.Where(l => campaign.ChannelLinkIds.Contains(l.Id)).ToList();
-
-        if (activeLinks.Count == 0)
-        {
-            _logger.LogError("No active channel links found for campaign {CampaignId}", payload.CampaignId);
-            await UpdateStatus(post, PostStatus.Failed, cancellationToken);
-            return;
-        }
-
-        // 4. Resolve Media URLs (convert internal blob paths to signed/absolute URLs if needed)
-        var mediaUrls = await ResolveMediaUrls(post.MediaUrls, cancellationToken);
-
-        // 5. Publish to all platforms
-        bool anySuccess = false;
-        foreach (var link in activeLinks)
-        {
-            var adapter = _adapters.FirstOrDefault(a => a.PlatformId == link.Platform);
-            if (adapter == null)
+            // 1. Fetch Post and verify state
+            var post = await _postRepository.GetByIdAsync(payload.CampaignId, payload.PostId, cancellationToken);
+            if (post == null || post.Status != PostStatus.Pending)
             {
-                _logger.LogWarning("No adapter found for platform {Platform}", link.Platform);
-                continue;
+                _logger.LogWarning("Post {PostId} not found or not in Pending state after claim. Skipping.", payload.PostId);
+                return;
             }
 
-            var result = await adapter.PublishAsync(
-                new PostRequest { Text = post.Text, MediaUrls = mediaUrls },
-                link.Id,
-                link.TokenSecretName,
+            // 2. Fetch Campaign and verify it's still active
+            var campaign = await _campaignRepository.GetByIdAsync(payload.UserId, payload.CampaignId, cancellationToken);
+            if (campaign == null || campaign.Status != CampaignStatus.Active)
+            {
+                _logger.LogInformation("Campaign {CampaignId} is inactive. Marking post as Failed.", payload.CampaignId);
+                await UpdateStatus(post, PostStatus.Failed, cancellationToken);
+                return;
+            }
+
+            // 3. Resolve Channel Links
+            var allUserLinks = await _channelLinkRepository.ListByUserIdAsync(payload.UserId, cancellationToken);
+            var activeLinks = allUserLinks.Where(l => campaign.ChannelLinkIds.Contains(l.Id)).ToList();
+
+            if (activeLinks.Count == 0)
+            {
+                _logger.LogError("No active channel links found for campaign {CampaignId}", payload.CampaignId);
+                await UpdateStatus(post, PostStatus.Failed, cancellationToken);
+                return;
+            }
+
+            // 4. Resolve Media URLs (convert internal blob paths to signed/absolute URLs if needed)
+            var mediaUrls = await ResolveMediaUrls(post.MediaUrls, cancellationToken);
+
+            // 5. Publish to all platforms
+            bool anySuccess = false;
+            foreach (var link in activeLinks)
+            {
+                var adapter = _adapters.FirstOrDefault(a => a.PlatformId == link.Platform);
+                if (adapter == null)
+                {
+                    _logger.LogWarning("No adapter found for platform {Platform}", link.Platform);
+                    continue;
+                }
+
+                var result = await adapter.PublishAsync(
+                    new PostRequest { Text = post.Text, MediaUrls = mediaUrls },
+                    link.Id,
+                    link.TokenSecretName,
+                    cancellationToken);
+
+                // Record History
+                var historyItem = new PostHistoryItem
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    CampaignId = post.CampaignId,
+                    UserId = post.UserId,
+                    PostId = post.Id,
+                    ChannelLinkId = link.Id,
+                    Platform = link.Platform,
+                    ExternalPostId = result.ExternalPostId,
+                    PostUrl = result.PostUrl,
+                    PostedAt = DateTimeOffset.UtcNow,
+                    Status = result.Success ? "Completed" : "Failed",
+                    ErrorMessage = result.ErrorMessage
+                };
+
+                try
+                {
+                    await _historyRepository.CreateAsync(historyItem, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to save post history for post {PostId} on platform {Platform}", post.Id, link.Platform);
+                }
+
+                if (result.Success) anySuccess = true;
+                else _logger.LogError("Failed to post to {Platform}: {Error}", link.Platform, result.ErrorMessage);
+            }
+
+            // 6. Final Status Update
+            await UpdateStatus(post, anySuccess ? PostStatus.Posted : PostStatus.Failed, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected failure while processing post {PostId}. Marking as Failed to avoid duplicate retries.", payload.PostId);
+
+            var markedFailed = await _postRepository.TryTransitionStatusAsync(
+                payload.CampaignId,
+                payload.PostId,
+                PostStatus.Pending,
+                PostStatus.Failed,
                 cancellationToken);
 
-            // Record History
-            var historyItem = new PostHistoryItem
+            if (!markedFailed)
             {
-                Id = Guid.NewGuid().ToString(),
-                CampaignId = post.CampaignId,
-                UserId = post.UserId,
-                PostId = post.Id,
-                ChannelLinkId = link.Id,
-                Platform = link.Platform,
-                ExternalPostId = result.ExternalPostId,
-                PostUrl = result.PostUrl,
-                PostedAt = DateTimeOffset.UtcNow,
-                Status = result.Success ? "Completed" : "Failed",
-                ErrorMessage = result.ErrorMessage
-            };
-
-            try
-            {
-                await _historyRepository.CreateAsync(historyItem, cancellationToken);
+                _logger.LogWarning("Failed to mark post {PostId} as Failed after unexpected processor error.", payload.PostId);
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to save post history for post {PostId} on platform {Platform}", post.Id, link.Platform);
-            }
-
-            if (result.Success) anySuccess = true;
-            else _logger.LogError("Failed to post to {Platform}: {Error}", link.Platform, result.ErrorMessage);
         }
-
-        // 6. Final Status Update
-        await UpdateStatus(post, anySuccess ? PostStatus.Posted : PostStatus.Failed, cancellationToken);
     }
 
     private async Task UpdateStatus(Post post, PostStatus status, CancellationToken ct)

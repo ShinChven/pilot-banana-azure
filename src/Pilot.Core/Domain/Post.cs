@@ -22,12 +22,22 @@ public class Post
     public List<string> MediaUrls { get; set; } = new();
 
     /// <summary>
+    /// Optimized versions (max 1600px) for UI viewing.
+    /// </summary>
+    public List<string> OptimizedUrls { get; set; } = new();
+
+    /// <summary>
+    /// Small thumbnails (max 320px) for list previews.
+    /// </summary>
+    public List<string> ThumbnailUrls { get; set; } = new();
+
+    /// <summary>
     /// The exact minute this post should be published.
     /// </summary>
     public DateTimeOffset? ScheduledTime { get; set; }
 
     /// <summary>
-    /// Draft, Scheduled, Posted, or Failed.
+    /// Draft, Scheduled, Pending (in-flight), Posted, or Failed.
     /// </summary>
     public PostStatus Status { get; set; } = PostStatus.Draft;
 

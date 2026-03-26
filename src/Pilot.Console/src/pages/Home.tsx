@@ -7,7 +7,7 @@ import {
   CardHeader,
   CardTitle
 } from "@/src/components/ui/card";
-import { Button } from "@/src/components/ui/button";
+import { Button, buttonVariants } from "@/src/components/ui/button";
 import {
   BarChart,
   Bar,
@@ -54,15 +54,19 @@ export default function Home() {
   const { token } = useAuth();
   const [stats, setStats] = React.useState<DashboardStats | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [days, setDays] = React.useState(7);
 
   const automationData = React.useMemo(() => {
     const data = stats?.automationOverview ?? [];
     const result = [];
     const now = new Date();
-    for (let i = 29; i >= 0; i--) {
+    for (let i = days - 1; i >= 0; i--) {
       const d = new Date();
       d.setDate(now.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
       const displayDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       const found = data.find(item => item.date === dateStr);
       result.push({
@@ -71,13 +75,13 @@ export default function Home() {
       });
     }
     return result;
-  }, [stats?.automationOverview]);
+  }, [stats?.automationOverview, days]);
 
   const fetchStats = React.useCallback(async () => {
     if (!token) return;
     setIsLoading(true);
     try {
-      const { data, error } = await statsApi.getStats(token);
+      const { data, error } = await statsApi.getStats(token, days);
       if (error) {
         toast.error("Failed to load dashboard stats", { description: error });
       } else if (data) {
@@ -88,7 +92,7 @@ export default function Home() {
     } finally {
       setIsLoading(false);
     }
-  }, [token]);
+  }, [token, days]);
 
   React.useEffect(() => {
     fetchStats();
@@ -111,7 +115,8 @@ export default function Home() {
       change: '+0',
       icon: Layers,
       trend: 'up',
-      color: 'text-blue-500'
+      color: 'text-blue-500',
+      href: '/campaigns'
     },
     {
       name: 'Scheduled Posts',
@@ -119,7 +124,8 @@ export default function Home() {
       change: '+0',
       icon: Send,
       trend: 'up',
-      color: 'text-amber-500'
+      color: 'text-amber-500',
+      href: '/scheduled-posts'
     },
     {
       name: 'Connected Channels',
@@ -127,7 +133,8 @@ export default function Home() {
       change: '+0',
       icon: Share2,
       trend: 'up',
-      color: 'text-emerald-500'
+      color: 'text-emerald-500',
+      href: '/channels'
     },
     {
       name: 'System Health',
@@ -135,7 +142,8 @@ export default function Home() {
       change: 'Stable',
       icon: Activity,
       trend: 'up',
-      color: 'text-primary'
+      color: 'text-primary',
+      href: undefined
     },
   ];
 
@@ -148,7 +156,11 @@ export default function Home() {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {cards.map((stat) => (
-          <Card key={stat.name} className="border-muted-foreground/10 bg-card">
+          <Card
+            key={stat.name}
+            className={cn("border-muted-foreground/10 bg-card", stat.href && "cursor-pointer hover:border-muted-foreground/20 transition-colors")}
+            onClick={() => stat.href && navigate(stat.href)}
+          >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">{stat.name}</CardTitle>
               <stat.icon className={cn("h-4 w-4", stat.color)} />
@@ -181,9 +193,27 @@ export default function Home() {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-7">
         <Card className="col-span-1 md:col-span-2 lg:col-span-4 border-muted-foreground/10 bg-card">
-          <CardHeader>
-            <CardTitle>Automation Overview</CardTitle>
-            <CardDescription>Visualizing your posting cadence</CardDescription>
+          <CardHeader className="flex flex-row items-start justify-between space-y-0">
+            <div>
+              <CardTitle>Automation Overview</CardTitle>
+              <CardDescription>Visualizing your posting cadence</CardDescription>
+            </div>
+            <div className="flex items-center rounded-md border border-muted-foreground/15 p-0.5 gap-0.5">
+              {([7, 14, 30, 90] as const).map((d) => (
+                <button
+                  key={d}
+                  onClick={() => setDays(d)}
+                  className={cn(
+                    "px-2 py-0.5 text-xs rounded font-medium transition-colors",
+                    days === d
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {d}D
+                </button>
+              ))}
+            </div>
           </CardHeader>
           <CardContent className="pl-2">
             <div className="h-[350px]">
@@ -285,17 +315,34 @@ export default function Home() {
                         </Badge>
                       </p>
                       <div className="flex flex-col">
-                        <p className="text-xs text-muted-foreground truncate font-medium">
-                          {item.displayName || item.username || "Deleted Account"}
+                        <p className="text-xs text-muted-foreground truncate font-medium flex items-center gap-1">
+                          <span>{item.displayName || item.username || "Deleted Account"}</span>
+                          <span>•</span>
+                          {item.campaignName ? (
+                            <Button
+                              variant="link"
+                              className="h-auto p-0 text-xs font-medium text-primary/70 hover:text-primary transition-colors truncate"
+                              onClick={() => navigate(`/campaigns/${item.campaignId}`)}
+                            >
+                              {item.campaignName}
+                            </Button>
+                          ) : (
+                            <span className="text-primary/70 italic">Campaign</span>
+                          )}
                         </p>
                         <p className="text-[10px] text-muted-foreground/70 truncate">
-                          {item.status === 'Completed' 
+                          {item.status === 'Completed'
                             ? "Successfully published"
                             : (item.errorMessage || "Error occurred during posting.")}
                         </p>
                       </div>
                     </div>
                     <div className="ml-auto text-[10px] text-muted-foreground font-medium whitespace-nowrap pl-2 mt-0.5">
+                      {item.postUrl && (
+                        <a href={item.postUrl} target="_blank" rel="noopener noreferrer" className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "h-6 gap-1.5 px-2 rounded-full mr-2")}>
+                            View <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                      )}
                       {new Date(item.postedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </div>
                   </div>

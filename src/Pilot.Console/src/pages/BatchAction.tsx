@@ -19,6 +19,14 @@ import {
   SelectValue,
 } from "@/src/components/ui/select";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/src/components/ui/dropdown-menu";
+import {
   ArrowLeft,
   Search,
   Image as ImageIcon,
@@ -33,7 +41,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Sparkles,
-  Filter
+  Filter,
+  SortAsc,
+  ChevronDown,
+  Calendar
 } from 'lucide-react';
 import { motion, AnimatePresence } from "motion/react";
 import { Campaign, ScheduledPost } from '../types';
@@ -44,7 +55,8 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription
+  DialogDescription,
+  DialogFooter
 } from "@/src/components/ui/dialog";
 import { useAuth } from '../context/AuthContext';
 import { getCampaign } from '../api/campaigns';
@@ -62,6 +74,8 @@ export default function BatchActionPage() {
   const [searchQuery, setSearchQuery] = React.useState(searchParams.get('q') || '');
   const [debouncedSearch, setDebouncedSearch] = React.useState(searchParams.get('q') || '');
   const statusFilter = searchParams.get('status') || 'all';
+  const sortBy = searchParams.get('sortBy') || 'scheduledTime';
+  const sortOrder = searchParams.get('sortOrder') || 'desc';
 
   // Pagination State from URL
   const page = parseInt(searchParams.get('page') || '1', 10);
@@ -78,6 +92,8 @@ export default function BatchActionPage() {
   // Modal State
   const [isAiModalOpen, setIsAiModalOpen] = React.useState(false);
   const [isScheduleModalOpen, setIsScheduleModalOpen] = React.useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+  const [isDeleting, setIsDeleting] = React.useState(false);
 
   const updateQueryParams = (newParams: Record<string, string | number>) => {
     const params = new URLSearchParams(searchParams);
@@ -104,7 +120,17 @@ export default function BatchActionPage() {
     try {
       const [campRes, postRes] = await Promise.all([
         getCampaign(id, token),
-        listPosts(user.id, id, token, page, pageSize, statusFilter === 'all' ? undefined : statusFilter, debouncedSearch)
+        listPosts(
+          user.id, 
+          id, 
+          token, 
+          page, 
+          pageSize, 
+          statusFilter === 'all' ? undefined : statusFilter, 
+          debouncedSearch,
+          sortBy,
+          sortOrder
+        )
       ]);
 
       if (campRes.data) {
@@ -115,10 +141,12 @@ export default function BatchActionPage() {
           description: '',
           status: c.status === 'Active' ? 'Active' : 'Inactive',
           startDate: '',
-          endDate: '',
+          endDate: c.endDate ? new Date(c.endDate).toLocaleDateString() : '',
           channels: c.channelLinkIds || [],
           posts: [],
-          thumbnail: ''
+          thumbnail: '',
+          totalPosts: c.totalPosts,
+          postedPosts: c.postedPosts
         });
       }
 
@@ -127,6 +155,8 @@ export default function BatchActionPage() {
           id: p.id,
           content: p.text || '',
           images: p.mediaUrls || [],
+          optimizedUrls: p.optimizedUrls || [],
+          thumbnailUrls: p.thumbnailUrls || [],
           scheduledAt: p.scheduledTime || '',
           status: p.status as any,
           channels: campRes.data?.channelLinkIds || []
@@ -138,7 +168,7 @@ export default function BatchActionPage() {
     } finally {
       if (!silent) setIsLoading(false);
     }
-  }, [token, id, user, page, pageSize, statusFilter, debouncedSearch]);
+  }, [token, id, user, page, pageSize, statusFilter, debouncedSearch, sortBy, sortOrder]);
 
   React.useEffect(() => {
     fetchData();
@@ -190,18 +220,29 @@ export default function BatchActionPage() {
     );
   };
 
-  const handleBatchDelete = async () => {
+  const handleBatchDelete = () => {
+    if (selectedPosts.length === 0 || !token || !user || !id) return;
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmBatchDelete = async () => {
     if (selectedPosts.length === 0 || !token || !user || !id) return;
 
-    let successCount = 0;
-    for (const postId of selectedPosts) {
-        const { error } = await deletePost(user.id, id, postId, token);
-        if (!error) successCount++;
-    }
+    setIsDeleting(true);
+    try {
+        let successCount = 0;
+        for (const postId of selectedPosts) {
+            const { error } = await deletePost(user.id, id, postId, token);
+            if (!error) successCount++;
+        }
 
-    toast.success(`Deleted ${successCount} posts`);
-    setSelectedPosts([]);
-    fetchData();
+        toast.success(`Deleted ${successCount} posts`);
+        setSelectedPosts([]);
+        fetchData(true);
+    } finally {
+        setIsDeleting(false);
+        setIsDeleteDialogOpen(false);
+    }
   };
 
   const handleBatchSend = async () => {
@@ -221,7 +262,7 @@ export default function BatchActionPage() {
 
     toast.success(`Sent ${successCount} posts to all channels`);
     setSelectedPosts([]);
-    fetchData();
+    fetchData(true);
   };
 
   const handleBatchSchedule = async (schedules: { postId: string; scheduledTime: string }[]) => {
@@ -236,7 +277,7 @@ export default function BatchActionPage() {
 
     toast.success(`Successfully scheduled ${data?.count} posts`);
     setSelectedPosts([]);
-    fetchData();
+    fetchData(true);
   };
 
   const handleBatchUnschedule = async () => {
@@ -251,7 +292,7 @@ export default function BatchActionPage() {
 
     toast.success(`Successfully unscheduled ${data?.count} posts`);
     setSelectedPosts([]);
-    fetchData();
+    fetchData(true);
   };
 
   const totalPages = Math.ceil(totalItems / pageSize);
@@ -305,6 +346,57 @@ export default function BatchActionPage() {
                 <SelectItem value="Failed">Failed</SelectItem>
               </SelectContent>
             </Select>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger render={(props) => (
+                <Button {...props} variant="outline" size="sm" className="h-10 gap-2 bg-muted/30 border-muted-foreground/5 text-muted-foreground flex-1 sm:flex-none justify-between sm:justify-center min-w-[140px] rounded-xl">
+                  <SortAsc className="w-3.5 h-3.5" />
+                  {sortBy === 'scheduledTime' ? 'Scheduled Time' : 'Creation Date'}
+                  <ChevronDown className="w-3 h-3 opacity-50" />
+                </Button>
+              )} nativeButton={true} />
+              <DropdownMenuContent align="end" className="min-w-[14rem] rounded-xl border-muted-foreground/10">
+                <DropdownMenuLabel>Sort Options</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  onClick={() => updateQueryParams({ sortBy: 'scheduledTime', sortOrder: 'asc', page: 1 })}
+                  className="grid grid-cols-[1fr_20px] items-center gap-2"
+                >
+                  <span>Scheduled (Soonest First)</span>
+                  <div className="flex justify-center text-primary font-bold">
+                    {sortBy === 'scheduledTime' && sortOrder === 'asc' && '✓'}
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => updateQueryParams({ sortBy: 'scheduledTime', sortOrder: 'desc', page: 1 })}
+                  className="grid grid-cols-[1fr_20px] items-center gap-2"
+                >
+                  <span>Scheduled (Latest First)</span>
+                  <div className="flex justify-center text-primary font-bold">
+                    {sortBy === 'scheduledTime' && sortOrder === 'desc' && '✓'}
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  onClick={() => updateQueryParams({ sortBy: 'createdAt', sortOrder: 'desc', page: 1 })}
+                  className="grid grid-cols-[1fr_20px] items-center gap-2"
+                >
+                  <span>Created (Newest First)</span>
+                  <div className="flex justify-center text-primary font-bold">
+                    {sortBy === 'createdAt' && sortOrder === 'desc' && '✓'}
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => updateQueryParams({ sortBy: 'createdAt', sortOrder: 'asc', page: 1 })}
+                  className="grid grid-cols-[1fr_20px] items-center gap-2"
+                >
+                  <span>Created (Oldest First)</span>
+                  <div className="flex justify-center text-primary font-bold">
+                    {sortBy === 'createdAt' && sortOrder === 'asc' && '✓'}
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
@@ -447,7 +539,7 @@ export default function BatchActionPage() {
                         variant="outline"
                         size="sm"
                         className="h-8 gap-2 rounded-full border-muted-foreground/10 hover:bg-muted/50"
-                        onClick={() => setPreviewImages(post.images || [])}
+                        onClick={() => setPreviewImages(post.optimizedUrls || post.images || [])}
                       >
                         <ImageIcon className="w-3.5 h-3.5" />
                         <span className="text-xs">{post.images.length}</span>
@@ -536,6 +628,50 @@ export default function BatchActionPage() {
               </div>
             ))}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="rounded-2xl border-muted-foreground/10 max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="w-5 h-5" />
+              Confirm Batch Delete
+            </DialogTitle>
+            <DialogDescription className="pt-2">
+              Are you sure you want to delete <span className="font-bold text-foreground">{selectedPosts.length}</span> selected posts?
+              <br /><br />
+              This action <span className="font-bold text-destructive underline">cannot be undone</span> and will permanently remove these posts and their media from the campaign.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0 mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+              className="rounded-xl border-muted-foreground/10"
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmBatchDelete}
+              className="rounded-xl font-bold gap-2"
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4" />
+                  Delete Posts
+                </>
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

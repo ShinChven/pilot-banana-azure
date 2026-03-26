@@ -13,24 +13,30 @@ using Pilot.Api.Services;
 using Pilot.Core.Domain;
 using Pilot.Core.DTOs;
 using Pilot.Core.Repositories;
+using Pilot.Core.Services;
 
 namespace Pilot.Api.Functions;
+
+public record UploadedMedia(string Original, string Optimized, string Thumbnail);
 
 public class PostsUpdateFunction
 {
     private readonly IAssetBlobStore _blobStore;
     private readonly IPostRepository _postRepository;
+    private readonly IImageOptimizer _imageOptimizer;
     private readonly RequestAuthHelper _authHelper;
     private readonly ILogger<PostsUpdateFunction> _logger;
 
     public PostsUpdateFunction(
         IAssetBlobStore blobStore,
         IPostRepository postRepository,
+        IImageOptimizer imageOptimizer,
         RequestAuthHelper authHelper,
         ILogger<PostsUpdateFunction> logger)
     {
         _blobStore = blobStore;
         _postRepository = postRepository;
+        _imageOptimizer = imageOptimizer;
         _authHelper = authHelper;
         _logger = logger;
     }
@@ -70,29 +76,66 @@ public class PostsUpdateFunction
 
         _logger.LogInformation("UpdatePost: Received mediaOrder: [{MediaOrder}] and {FileCount} files.", string.Join(", ", mediaOrderValues), files.Count);
 
-        async Task<string> UploadFileAsync(IFormFile file)
+        async Task<UploadedMedia> UploadFileAsync(IFormFile file)
         {
+            var validation = PostMediaRules.ValidateFile(file.ContentType, file.FileName, file.Length);
+            if (!validation.IsValid)
+                throw new InvalidOperationException(validation.ErrorMessage);
+
             var ext = Path.GetExtension(file.FileName);
             if (string.IsNullOrEmpty(ext)) ext = ".bin";
 
             var mediaId = Guid.NewGuid().ToString("N");
-            var blobPath = $"{userId}/{campaignId}/{mediaId}{ext}";
+            var basePath = $"{userId}/{campaignId}/{mediaId}";
+            var blobPath = $"{basePath}{ext}";
 
             using var stream = file.OpenReadStream();
-            var absoluteUrl = await _blobStore.UploadAsync(blobPath, stream, file.ContentType, cancellationToken);
-            _logger.LogInformation("UpdatePost: Uploaded file {FileName} to {AbsoluteUrl}", file.FileName, absoluteUrl);
-            return absoluteUrl;
+            var originalUrl = await _blobStore.UploadAsync(blobPath, stream, file.ContentType, cancellationToken);
+            _logger.LogInformation("UpdatePost: Uploaded original {FileName} to {AbsoluteUrl}", file.FileName, originalUrl);
+
+            string optimizedUrl = originalUrl;
+            string thumbnailUrl = originalUrl;
+
+            if (_imageOptimizer.Supports(file.ContentType))
+            {
+                try
+                {
+                    stream.Position = 0;
+                    var (optStream, thumbStream) = await _imageOptimizer.CreateAllVersionsAsync(stream, cancellationToken);
+
+                    using (optStream)
+                    {
+                        optimizedUrl = await _blobStore.UploadAsync($"{basePath}_opt.jpg", optStream, "image/jpeg", cancellationToken);
+                    }
+
+                    using (thumbStream)
+                    {
+                        thumbnailUrl = await _blobStore.UploadAsync($"{basePath}_thumb.jpg", thumbStream, "image/jpeg", cancellationToken);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "UpdatePost: Image optimization failed for {FileName}", file.FileName);
+                }
+            }
+
+            return new UploadedMedia(originalUrl, optimizedUrl, thumbnailUrl);
         }
 
         // process files
-        var uploadedUrls = new List<string>();
+        var uploadedMedia = new List<UploadedMedia>();
         foreach (var file in files)
         {
             if (file.Length > 0)
             {
                 try
                 {
-                    uploadedUrls.Add(await UploadFileAsync(file));
+                    uploadedMedia.Add(await UploadFileAsync(file));
+                }
+                catch (InvalidOperationException ex)
+                {
+                    _logger.LogWarning("UpdatePost: Invalid media file {FileName}: {Message}", file.FileName, ex.Message);
+                    return new BadRequestObjectResult(new { error = ex.Message });
                 }
                 catch (Exception ex)
                 {
@@ -105,128 +148,142 @@ public class PostsUpdateFunction
         {
             if (Uri.TryCreate(url, UriKind.Absolute, out var uri))
             {
-                // Strip query string (Token) before saving to DB
                 return uri.GetLeftPart(UriPartial.Path);
             }
             return url;
         }
 
+        var newMediaUrls = new List<string>();
+        var newOptimizedUrls = new List<string>();
+        var newThumbnailUrls = new List<string>();
+
+        // Lookup maps for existing media to find their opt/thumb versions
+        var existingOptMap = new Dictionary<string, string>();
+        var existingThumbMap = new Dictionary<string, string>();
+        
+        if (existingPost.MediaUrls != null)
+        {
+            for (int i = 0; i < existingPost.MediaUrls.Count; i++)
+            {
+                var orig = CleanUrl(existingPost.MediaUrls[i]);
+                if (existingPost.OptimizedUrls != null && i < existingPost.OptimizedUrls.Count)
+                    existingOptMap[orig] = CleanUrl(existingPost.OptimizedUrls[i]);
+                if (existingPost.ThumbnailUrls != null && i < existingPost.ThumbnailUrls.Count)
+                    existingThumbMap[orig] = CleanUrl(existingPost.ThumbnailUrls[i]);
+            }
+        }
+
+        void AddMedia(string original, string? optimized = null, string? thumbnail = null)
+        {
+            var cleanOrig = CleanUrl(original);
+            if (newMediaUrls.Contains(cleanOrig)) return;
+
+            newMediaUrls.Add(cleanOrig);
+            newOptimizedUrls.Add(CleanUrl(optimized ?? existingOptMap.GetValueOrDefault(cleanOrig, original)));
+            newThumbnailUrls.Add(CleanUrl(thumbnail ?? existingThumbMap.GetValueOrDefault(cleanOrig, original)));
+        }
+
         if (mediaOrderValues.Any(v => !string.IsNullOrEmpty(v)))
         {
-            // The frontend sends existing URLs in mediaOrder.
-            // New files are expected to be appended if not explicitly in mediaOrder (current PostForm.tsx behavior).
             foreach (var item in mediaOrderValues)
             {
                 if (string.IsNullOrEmpty(item)) continue;
 
                 if (item.StartsWith("url:"))
                 {
-                    mediaUrls.Add(CleanUrl(item.Substring(4)));
+                    AddMedia(item.Substring(4));
                 }
                 else if (item.StartsWith("file:"))
                 {
-                    if (int.TryParse(item.Substring(5), out int idx) && idx < uploadedUrls.Count)
+                    if (int.TryParse(item.Substring(5), out int idx) && idx < uploadedMedia.Count)
                     {
-                        mediaUrls.Add(CleanUrl(uploadedUrls[idx]));
+                        var m = uploadedMedia[idx];
+                        AddMedia(m.Original, m.Optimized, m.Thumbnail);
                     }
                 }
                 else if (Uri.TryCreate(item, UriKind.Absolute, out _))
                 {
-                    mediaUrls.Add(CleanUrl(item));
+                    AddMedia(item);
                 }
             }
 
-            // If new files were uploaded but weren't explicitly in mediaOrder (common in many UI implementations),
-            // append them to ensure they aren't lost.
-            foreach (var uploadedUrl in uploadedUrls)
+            // Append any new files that weren't in mediaOrder
+            foreach (var m in uploadedMedia)
             {
-                var cleaned = CleanUrl(uploadedUrl);
-                if (!mediaUrls.Contains(cleaned))
-                {
-                    mediaUrls.Add(cleaned);
-                }
+                AddMedia(m.Original, m.Optimized, m.Thumbnail);
             }
-
-            existingPost.MediaUrls = mediaUrls;
         }
-        else if (form.ContainsKey("mediaOrder") && uploadedUrls.Count == 0)
+        else if (form.ContainsKey("mediaOrder") && uploadedMedia.Count == 0)
         {
-            // Empty mediaOrder list sent and NO new files, means all images deleted
-            _logger.LogInformation("UpdatePost: mediaOrder is present but empty and no new files, clearing all media.");
-            existingPost.MediaUrls = new List<string>();
+            // All deleted
         }
-        else if (uploadedUrls.Any())
+        else
         {
-            // If we have new files but no valid mediaOrder, append them to existing
-            var currentMedia = existingPost.MediaUrls ?? new List<string>();
-            foreach (var uploadedUrl in uploadedUrls)
+            // Fallback: keep existing + append new
+            if (existingPost.MediaUrls != null)
             {
-                var cleaned = CleanUrl(uploadedUrl);
-                if (!currentMedia.Contains(cleaned))
-                {
-                    currentMedia.Add(cleaned);
-                }
+                foreach (var url in existingPost.MediaUrls) AddMedia(url);
             }
-            existingPost.MediaUrls = currentMedia.Distinct().ToList();
-            _logger.LogInformation("UpdatePost: Added {Count} new files to existing media via fallback.", uploadedUrls.Count);
+            foreach (var m in uploadedMedia) AddMedia(m.Original, m.Optimized, m.Thumbnail);
         }
 
-        var currentMediaUrls = existingPost.MediaUrls ?? new List<string>();
-        _logger.LogInformation("UpdatePost: New mediaUrls: [{MediaUrls}]", string.Join(", ", currentMediaUrls));
+        var finalMediaKinds = newMediaUrls.Select(url => PostMediaRules.Classify(null, url)).ToList();
+        var compositionError = PostMediaRules.ValidateComposition(finalMediaKinds);
+        if (compositionError != null)
+            return new BadRequestObjectResult(new { error = compositionError });
 
-        // Cleanup removed media from blob storage
-        var newMediaUrls = existingPost.MediaUrls ?? new List<string>();
-        var removedUrls = oldMediaUrls.Except(newMediaUrls).ToList();
+        // Cleanup removed blobs (original, optimized, thumbnail)
+        var oldAllUrls = (existingPost.MediaUrls ?? new List<string>())
+            .Concat(existingPost.OptimizedUrls ?? new List<string>())
+            .Concat(existingPost.ThumbnailUrls ?? new List<string>())
+            .Select(CleanUrl)
+            .Distinct()
+            .ToList();
+
+        var newAllUrls = newMediaUrls
+            .Concat(newOptimizedUrls)
+            .Concat(newThumbnailUrls)
+            .Select(CleanUrl)
+            .Distinct()
+            .ToList();
+
+        var removedUrls = oldAllUrls.Except(newAllUrls).ToList();
         foreach (var url in removedUrls)
         {
-            try
-            {
-                await _blobStore.DeleteAsync(url, cancellationToken);
-                _logger.LogInformation("Deleted removed media blob: {BlobPath}", url);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to delete removed media blob {BlobPath}. It may have already been deleted.", url);
-            }
+            try { await _blobStore.DeleteAsync(url, cancellationToken); }
+            catch (Exception ex) { _logger.LogWarning(ex, "Failed to delete blob {BlobPath}", url); }
         }
 
-        // Update text
+        existingPost.MediaUrls = newMediaUrls;
+        existingPost.OptimizedUrls = newOptimizedUrls;
+        existingPost.ThumbnailUrls = newThumbnailUrls;
         existingPost.Text = string.IsNullOrWhiteSpace(text) ? null : text.Trim();
 
         if (!string.IsNullOrEmpty(scheduledTimeStr) && DateTimeOffset.TryParse(scheduledTimeStr, out var st))
-        {
             existingPost.ScheduledTime = st;
-        }
         else if (form.ContainsKey("scheduledTime"))
-        {
             existingPost.ScheduledTime = null;
-        }
 
         if (!string.IsNullOrEmpty(statusStr) && Enum.TryParse<PostStatus>(statusStr, true, out var status))
-        {
             existingPost.Status = status;
-        }
 
         existingPost.UpdatedAt = DateTimeOffset.UtcNow;
-
         await _postRepository.UpdateAsync(existingPost, cancellationToken);
 
         var containerSas = await _blobStore.GetContainerSasAsync(TimeSpan.FromHours(24), cancellationToken);
 
-        var resolvedMediaUrls = new List<string>();
-        if (existingPost.MediaUrls != null)
+        async Task<List<string>> ResolveUrlsAsync(List<string> urls)
         {
-            foreach (var url in existingPost.MediaUrls)
+            var resolved = new List<string>();
+            foreach (var url in urls)
             {
                 var uri = await _blobStore.GetBlobUriAsync(url, TimeSpan.FromHours(24), cancellationToken);
                 var uriString = uri.ToString();
-
                 if (!string.IsNullOrEmpty(containerSas) && !uriString.Contains("?"))
-                {
                     uriString = $"{uriString}?{containerSas}";
-                }
-                resolvedMediaUrls.Add(uriString);
+                resolved.Add(uriString);
             }
+            return resolved;
         }
 
         var responseData = new PostResponse(
@@ -234,7 +291,9 @@ public class PostsUpdateFunction
             existingPost.CampaignId,
             existingPost.UserId,
             existingPost.Text,
-            resolvedMediaUrls,
+            await ResolveUrlsAsync(existingPost.MediaUrls),
+            await ResolveUrlsAsync(existingPost.OptimizedUrls),
+            await ResolveUrlsAsync(existingPost.ThumbnailUrls),
             existingPost.ScheduledTime,
             existingPost.Status,
             existingPost.PlatformData,

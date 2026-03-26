@@ -18,5 +18,6 @@ public record PostHistoryDto(
     string? ErrorMessage,
     string? AvatarUrl = null,
     string? DisplayName = null,
-    string? Username = null
+    string? Username = null,
+    string? CampaignName = null
 );

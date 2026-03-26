@@ -12,6 +12,6 @@ public interface IPlatformAdapter
     /// <param name="tokenSecretName">Key Vault secret name for the channel token; when null, uses convention "channellink-{channelLinkId}".</param>
     Task<PostResult> PublishAsync(PostRequest request, string channelLinkId, string? tokenSecretName = null, CancellationToken cancellationToken = default);
 
-    /// <summary>Manually trigger a token refresh for a specific channel.</summary>
-    Task<bool> RefreshTokenAsync(string channelLinkId, string? tokenSecretName = null, CancellationToken cancellationToken = default);
+    /// <summary>Manually trigger a token refresh for a specific channel and return any updated profile metadata.</summary>
+    Task<ChannelRefreshResult> RefreshTokenAsync(string channelLinkId, string? tokenSecretName = null, CancellationToken cancellationToken = default);
 }

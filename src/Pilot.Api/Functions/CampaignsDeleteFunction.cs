@@ -10,14 +10,19 @@ namespace Pilot.Api.Functions;
 public class CampaignsDeleteFunction
 {
     private readonly ICampaignRepository _campaignRepository;
+    private readonly IPostRepository _postRepository;
+    private readonly IAssetBlobStore _blobStore;
     private readonly RequestAuthHelper _authHelper;
 
     public CampaignsDeleteFunction(
         ICampaignRepository campaignRepository,
-        RequestAuthHelper authHelper,
-        ILoggerFactory loggerFactory)
+        IPostRepository postRepository,
+        IAssetBlobStore blobStore,
+        RequestAuthHelper authHelper)
     {
         _campaignRepository = campaignRepository;
+        _postRepository = postRepository;
+        _blobStore = blobStore;
         _authHelper = authHelper;
     }
 
@@ -43,7 +48,17 @@ public class CampaignsDeleteFunction
             return notFound;
         }
 
+        // 1. Clean up blobs from storage
+        // Blobs are stored at: {userId}/{campaignId}/...
+        var blobPrefix = $"{auth.Value.UserId}/{id}/";
+        await _blobStore.DeleteFolderAsync(blobPrefix, cancellationToken);
+
+        // 2. Clean up post records from DB
+        await _postRepository.DeleteByCampaignIdAsync(id, cancellationToken);
+
+        // 3. Delete the campaign record
         await _campaignRepository.DeleteAsync(auth.Value.UserId, id, cancellationToken);
+
         return req.CreateResponse(HttpStatusCode.NoContent);
     }
 }

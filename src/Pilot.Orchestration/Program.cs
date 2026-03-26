@@ -13,6 +13,7 @@ using Pilot.Infrastructure.Blob;
 using Pilot.Infrastructure.Cosmos;
 using Pilot.Infrastructure.AI;
 using Pilot.Infrastructure.KeyVault;
+using Pilot.Infrastructure.Media;
 using Pilot.Infrastructure.Notifications;
 
 namespace Pilot.Orchestration;
@@ -86,6 +87,7 @@ public class Program
                 services.AddPilotKeyVault(config);
                 services.AddPilotAdapters(config);
                 services.AddPilotAi();
+                services.AddMediaServices();
                 services.AddPilotNotifications();
 
                 services.AddSingleton(sp => 

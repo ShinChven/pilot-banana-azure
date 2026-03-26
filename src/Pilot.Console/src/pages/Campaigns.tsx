@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useNavigate, useParams, Link, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Card,
   CardContent,
@@ -10,13 +10,10 @@ import {
 } from "@/src/components/ui/card";
 import { Button } from "@/src/components/ui/button";
 import { Badge } from "@/src/components/ui/badge";
-import { Separator } from "@/src/components/ui/separator";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger
 } from "@/src/components/ui/dropdown-menu";
 import {
@@ -27,14 +24,13 @@ import {
   MoreVertical,
   Clock,
   Search,
-  Check,
   Megaphone,
   Loader2,
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
 import { Input } from "@/src/components/ui/input";
-import { cn } from '@/src/lib/utils';
+import { Avatar, AvatarFallback, AvatarGroup, AvatarGroupCount, AvatarImage } from "@/src/components/ui/avatar";
 import {
   Dialog,
   DialogContent,
@@ -45,7 +41,8 @@ import {
 } from "@/src/components/ui/dialog";
 import { Campaign } from '../types';
 import { useAuth } from '../context/AuthContext';
-import { listCampaigns, deleteCampaign, updateCampaign, type CampaignResponse } from '../api/campaigns';
+import { listCampaigns, deleteCampaign, updateCampaign } from '../api/campaigns';
+import { listChannels } from '../api/channels';
 import { toast } from 'sonner';
 
 export default function CampaignsPage() {
@@ -54,6 +51,7 @@ export default function CampaignsPage() {
   const { token } = useAuth();
   const [searchQuery, setSearchQuery] = React.useState(searchParams.get('q') || '');
   const [campaigns, setCampaigns] = React.useState<Campaign[]>([]);
+  const [channelsById, setChannelsById] = React.useState<Record<string, { username: string; avatar: string }>>({});
   const [isLoading, setIsLoading] = React.useState(true);
 
   // Pagination State from URL
@@ -69,23 +67,45 @@ export default function CampaignsPage() {
     if (!token) return;
     setIsLoading(true);
     try {
-      const { data, error } = await listCampaigns(token, page, pageSize);
-      if (error) {
-        toast.error('Failed to load campaigns', { description: error });
-      } else if (data) {
-        setTotalItems(data.total);
-        const mapped: Campaign[] = data.items.map(c => ({
+      const [campaignRes, channelRes] = await Promise.all([
+        listCampaigns(token, page, pageSize),
+        listChannels(token, 1, 100),
+      ]);
+
+      if (campaignRes.error) {
+        toast.error('Failed to load campaigns', { description: campaignRes.error });
+      } else if (campaignRes.data) {
+        setTotalItems(campaignRes.data.total);
+        const mapped: Campaign[] = campaignRes.data.items.map(c => ({
           id: c.id,
           name: c.name,
           description: c.description || `Campaign created on ${new Date(c.createdAt).toLocaleDateString()}`,
           status: c.status === 'Active' ? 'Active' : 'Inactive',
           startDate: new Date(c.createdAt).toLocaleDateString(),
-          endDate: '-',
+          endDate: c.endDate ? new Date(c.endDate).toLocaleDateString() : '-',
           channels: c.channelLinkIds,
           posts: [], // Not returned in list
-          thumbnail: `https://api.dicebear.com/7.x/shapes/svg?seed=${c.id}&backgroundColor=f1f5f9`
+          thumbnail: `https://api.dicebear.com/7.x/shapes/svg?seed=${c.id}&backgroundColor=f1f5f9`,
+          totalPosts: c.totalPosts,
+          postedPosts: c.postedPosts
         }));
         setCampaigns(mapped);
+      }
+
+      if (channelRes.error) {
+        toast.error('Failed to load channels', { description: channelRes.error });
+      } else if (channelRes.data) {
+        setChannelsById(
+          Object.fromEntries(
+            channelRes.data.items.map(channel => [
+              channel.id,
+              {
+                username: channel.displayName || channel.username || channel.externalId,
+                avatar: channel.avatarUrl || channel.profileUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${channel.id}`,
+              },
+            ])
+          )
+        );
       }
     } catch (err) {
       toast.error('Error', { description: 'An unexpected error occurred' });
@@ -159,6 +179,15 @@ export default function CampaignsPage() {
     }
   };
 
+  const getCampaignProgress = (campaign: Campaign) => {
+    const totalPosts = campaign.totalPosts ?? 0;
+    const postedPosts = campaign.postedPosts ?? 0;
+    const completedPosts = Math.min(postedPosts, totalPosts);
+    const progress = totalPosts > 0 ? Math.round((completedPosts / totalPosts) * 100) : 0;
+
+    return { totalPosts, completedPosts, progress };
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -208,75 +237,123 @@ export default function CampaignsPage() {
         </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filteredCampaigns.map((campaign) => (
-            <Card key={campaign.id} className="group overflow-hidden border-muted-foreground/10 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300">
-              <div className="relative h-40 overflow-hidden bg-muted">
-                <img
-                  src={campaign.thumbnail}
-                  alt={campaign.name}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  referrerPolicy="no-referrer"
-                />
-                <div className="absolute top-3 right-3">
-                  <Badge className={`${
-                    campaign.status === 'Active' ? 'bg-emerald-500 hover:bg-emerald-600' :
-                    'bg-amber-500 hover:bg-amber-600'
-                  } text-white border-none shadow-lg`}>
-                    {campaign.status}
-                  </Badge>
-                </div>
-              </div>
+          {filteredCampaigns.map((campaign) => {
+            const { totalPosts, completedPosts, progress } = getCampaignProgress(campaign);
+            const campaignChannels = campaign.channels
+              .map((channelId) => channelsById[channelId])
+              .filter((channel): channel is { username: string; avatar: string } => Boolean(channel));
+            const visibleChannels = campaignChannels.slice(0, 3);
+            const extraChannelCount = Math.max(campaignChannels.length - 3, 0);
 
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-xl font-bold text-foreground">{campaign.name}</CardTitle>
-                    <CardDescription className="line-clamp-1 mt-1">{campaign.description}</CardDescription>
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger render={(props) => (
-                      <Button {...props} variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
-                        <MoreVertical className="w-4 h-4" />
-                      </Button>
-                    )} nativeButton={true} />
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => navigate(`/campaigns/edit/${campaign.id}`)}>
-                        Edit Details
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => handleToggleCampaignStatus(campaign)}>
-                        {campaign.status === 'Active' ? 'Pause Campaign' : 'Resume Campaign'}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive" onClick={() => openDeleteDialog(campaign)}>Archive</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </CardHeader>
-
-              <CardContent className="space-y-4">
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-1.5">
-                    <Calendar className="w-4 h-4" />
-                    <span>{campaign.startDate}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <Layers className="w-4 h-4" />
-                    <span>{campaign.channels.length} Channels</span>
+            return (
+              <Card key={campaign.id} className="group overflow-hidden border-muted-foreground/10 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 p-0">
+                <div className="relative h-40 overflow-hidden bg-muted">
+                  <img
+                    src={campaign.thumbnail}
+                    alt={campaign.name}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="absolute top-3 right-3">
+                    <Badge className={`${
+                      campaign.status === 'Active' ? 'bg-emerald-500 hover:bg-emerald-600' :
+                      'bg-amber-500 hover:bg-amber-600'
+                    } text-white border-none shadow-lg`}>
+                      {campaign.status}
+                    </Badge>
                   </div>
                 </div>
-              </CardContent>
 
-              <CardFooter className="py-3">
-                <Button
-                  variant="ghost"
-                  className="w-full justify-between text-muted-foreground hover:text-foreground hover:bg-accent group/btn"
-                  onClick={() => navigate(`/campaigns/${campaign.id}`)}
-                >
-                  View Campaign
-                  <ArrowRight className="w-4 h-4 transition-transform group-hover/btn:translate-x-1" />
-                </Button>
-              </CardFooter>
-            </Card>
-          ))}
+                <CardHeader className="pt-4 pb-2">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <CardTitle className="text-xl font-bold text-foreground">{campaign.name}</CardTitle>
+                      <CardDescription className="line-clamp-1 mt-1">{campaign.description}</CardDescription>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger render={(props) => (
+                        <Button {...props} variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
+                          <MoreVertical className="w-4 h-4" />
+                        </Button>
+                      )} nativeButton={true} />
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => navigate(`/campaigns/edit/${campaign.id}`)}>
+                          Edit Details
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => handleToggleCampaignStatus(campaign)}>
+                          {campaign.status === 'Active' ? 'Pause Campaign' : 'Resume Campaign'}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="text-destructive" onClick={() => openDeleteDialog(campaign)}>Delete Campaign</DropdownMenuItem>                    </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="space-y-4">
+                  <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-1.5">
+                      <Calendar className="w-4 h-4" />
+                      <span>{campaign.startDate}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Clock className="w-4 h-4" />
+                      <span>Ends {campaign.endDate}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Layers className="w-4 h-4" />
+                      <span>{campaign.channels.length} Channels</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between rounded-2xl border border-muted-foreground/10 bg-muted/30 px-3 py-2">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Channels</p>
+                      <p className="text-xs text-muted-foreground">Showing up to 3 channel avatars per campaign</p>
+                    </div>
+                    <AvatarGroup className="items-center">
+                      {visibleChannels.map((channel) => (
+                        <Avatar key={channel.username} size="sm">
+                          <AvatarImage src={channel.avatar} alt={channel.username} referrerPolicy="no-referrer" />
+                          <AvatarFallback>{channel.username.slice(0, 1).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                      ))}
+                      {extraChannelCount > 0 && (
+                        <AvatarGroupCount className="size-6 text-xs">
+                          +{extraChannelCount}
+                        </AvatarGroupCount>
+                      )}
+                    </AvatarGroup>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium text-foreground">Progress</span>
+                      <span className="text-muted-foreground">{completedPosts}/{totalPosts} posts</span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-primary transition-all duration-500"
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {totalPosts > 0 ? `${progress}% completed` : 'No posts yet'}
+                    </p>
+                  </div>
+                </CardContent>
+
+                <CardFooter className="py-3">
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-between text-muted-foreground hover:text-foreground hover:bg-accent group/btn"
+                    onClick={() => navigate(`/campaigns/${campaign.id}`)}
+                  >
+                    View Campaign
+                    <ArrowRight className="w-4 h-4 transition-transform group-hover/btn:translate-x-1" />
+                  </Button>
+                </CardFooter>
+              </Card>
+            );
+          })}
         </div>
       )}
 

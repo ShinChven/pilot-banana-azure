@@ -26,6 +26,11 @@ export interface ConnectChannelResponse {
   message?: string;
 }
 
+export interface RefreshChannelLinkResponse {
+  success: boolean;
+  channel?: ChannelLinkResponse;
+}
+
 /** API may return PascalCase; normalize to our shape. */
 function toChannelLinkResponse(raw: Record<string, unknown>): ChannelLinkResponse {
   return {
@@ -81,5 +86,20 @@ export function deleteChannel(id: string, token: string) {
 }
 
 export function refreshChannelToken(id: string, token: string) {
-  return apiPost<{ success: boolean }>(`/channels/${id}/refresh`, undefined, token);
+  return apiPost<Record<string, unknown>>(`/channels/${id}/refresh`, undefined, token).then((res) => {
+    if (!res.data || typeof res.data !== 'object') {
+      return res as { data?: RefreshChannelLinkResponse; error?: string; status: number };
+    }
+
+    const raw = res.data as Record<string, unknown>;
+    return {
+      ...res,
+      data: {
+        success: Boolean(raw.success ?? raw.Success),
+        channel: raw.channel && typeof raw.channel === 'object'
+          ? toChannelLinkResponse(raw.channel as Record<string, unknown>)
+          : undefined,
+      } satisfies RefreshChannelLinkResponse,
+    };
+  });
 }

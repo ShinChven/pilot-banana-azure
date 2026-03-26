@@ -42,6 +42,21 @@ import { cn } from "@/src/lib/utils";
 import { useAuth } from '../context/AuthContext';
 import { listChannels, updateChannel, getConnectUrl, deleteChannel, refreshChannelToken, type ChannelLinkResponse } from '../api/channels';
 
+function mapChannelResponse(c: ChannelLinkResponse): Channel {
+  return {
+    id: c.id,
+    platform: c.platform.toUpperCase() as any,
+    username: c.displayName || c.username || c.externalId,
+    handle: c.username ? `@${c.username}` : undefined,
+    avatar: c.avatarUrl || c.profileUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${c.id}`,
+    profileUrl: c.profileUrl || undefined,
+    status: c.isEnabled ? 'Connected' : 'Disconnected',
+    followers: 0,
+    lastSync: new Date(c.createdAt).toLocaleDateString(),
+    enabled: c.isEnabled
+  };
+}
+
 export default function ChannelsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { token } = useAuth();
@@ -77,18 +92,7 @@ export default function ChannelsPage() {
         toast.error('Failed to load channels', { description: error });
       } else if (data) {
         setTotalItems(data.total);
-        const mapped: Channel[] = data.items.map(c => ({
-          id: c.id,
-          platform: c.platform.toUpperCase() as any,
-          username: c.displayName || c.username || c.externalId,
-          handle: c.username ? `@${c.username}` : undefined,
-          avatar: c.avatarUrl || c.profileUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${c.id}`,
-          profileUrl: c.profileUrl || undefined,
-          status: c.isEnabled ? 'Connected' : 'Disconnected',
-          followers: 0,
-          lastSync: new Date(c.createdAt).toLocaleDateString(),
-          enabled: c.isEnabled
-        }));
+        const mapped: Channel[] = data.items.map(mapChannelResponse);
         setChannels(mapped);
       }
     } catch (err) {
@@ -124,6 +128,9 @@ export default function ChannelsPage() {
       if (error) {
         toast.error('Token refresh failed', { description: error });
       } else if (data && data.success) {
+        if (data.channel) {
+          setChannels(prev => prev.map(ch => ch.id === id ? mapChannelResponse(data.channel!) : ch));
+        }
         toast.success('Token refreshed successfully');
       } else {
         toast.error('Token refresh failed', { description: 'The platform rejected the refresh attempt.' });

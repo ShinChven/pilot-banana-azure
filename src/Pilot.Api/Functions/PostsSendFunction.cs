@@ -25,7 +25,7 @@ public class PostsSendFunction
     private readonly IChannelLinkRepository _channelLinkRepository;
     private readonly IEnumerable<IPlatformAdapter> _adapters;
     private readonly RequestAuthHelper _authHelper;
-    private readonly IAssetBlobStore _blobStore;
+    private readonly PostResponseMapper _mapper;
 
     public PostsSendFunction(
         ILoggerFactory loggerFactory,
@@ -35,7 +35,7 @@ public class PostsSendFunction
         IChannelLinkRepository channelLinkRepository,
         IEnumerable<IPlatformAdapter> adapters,
         RequestAuthHelper authHelper,
-        IAssetBlobStore blobStore)
+        PostResponseMapper mapper)
     {
         _logger = loggerFactory.CreateLogger<PostsSendFunction>();
         _postRepository = postRepository;
@@ -44,7 +44,7 @@ public class PostsSendFunction
         _channelLinkRepository = channelLinkRepository;
         _adapters = adapters;
         _authHelper = authHelper;
-        _blobStore = blobStore;
+        _mapper = mapper;
     }
 
     [Function("SendPost")]
@@ -81,23 +81,9 @@ public class PostsSendFunction
             return new BadRequestObjectResult(new { error = "No valid channels found for this campaign. Please check your campaign settings and channel connections." });
         }
 
-        var containerSas = await _blobStore.GetContainerSasAsync(TimeSpan.FromHours(24), cancellationToken);
-
-        var absoluteMediaUrls = new List<string>();
-        if (post.MediaUrls != null)
-        {
-            foreach (var path in post.MediaUrls)
-            {
-                var uri = await _blobStore.GetBlobUriAsync(path, TimeSpan.FromHours(24), cancellationToken);
-
-                if (!string.IsNullOrEmpty(containerSas) && string.IsNullOrEmpty(uri.Query))
-                {
-                    var uriBuilder = new UriBuilder(uri) { Query = containerSas };
-                    uri = uriBuilder.Uri;
-                }
-                absoluteMediaUrls.Add(uri.ToString());
-            }
-        }
+        // We use the mapper here to resolve the absolute URLs for the adapters
+        var responseData = await _mapper.MapAsync(post, cancellationToken: cancellationToken);
+        var absoluteMediaUrls = responseData.MediaUrls;
 
         bool anySuccess = false;
         var errorMessages = new List<string>();
@@ -158,19 +144,8 @@ public class PostsSendFunction
             return new BadRequestObjectResult(new { error = combinedError });
         }
 
-        var responseData = new PostResponse(
-            post.Id,
-            post.CampaignId,
-            post.UserId,
-            post.Text,
-            absoluteMediaUrls,
-            post.ScheduledTime,
-            post.Status,
-            post.PlatformData,
-            post.CreatedAt,
-            post.UpdatedAt
-        );
-
-        return new OkObjectResult(responseData);
+        // Return updated status
+        var finalResponse = await _mapper.MapAsync(post, cancellationToken: cancellationToken);
+        return new OkObjectResult(finalResponse);
     }
 }

@@ -151,10 +151,19 @@ export default function GlobalHistoryPage() {
                       </div>
                     </div>
                     <div className="col-span-2">
-                      <div className="text-xs text-muted-foreground truncate">
-                        <Button variant="link" className="h-auto p-0 text-[10px] font-medium" onClick={() => navigate(`/campaigns/${item.campaignId}`)}>
-                          View Campaign
-                        </Button>
+                      <div className="flex flex-col overflow-hidden min-w-0">
+                        {item.campaignName ? (
+                          <Button 
+                            variant="link" 
+                            className="h-auto p-0 text-xs font-semibold truncate justify-start text-foreground hover:text-primary transition-colors" 
+                            onClick={() => navigate(`/campaigns/${item.campaignId}`)}
+                            title={item.campaignName}
+                          >
+                            {item.campaignName}
+                          </Button>
+                        ) : (
+                          <span className="text-xs font-semibold text-muted-foreground truncate italic">Unknown Campaign</span>
+                        )}
                       </div>
                     </div>
                     <div className="col-span-2">

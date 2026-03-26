@@ -20,20 +20,20 @@ public class PostsUserListFunction
     private readonly IPostHistoryRepository _historyRepository;
     private readonly ICampaignRepository _campaignRepository;
     private readonly RequestAuthHelper _authHelper;
-    private readonly IAssetBlobStore _blobStore;
+    private readonly PostResponseMapper _mapper;
 
     public PostsUserListFunction(
         IPostRepository postRepository, 
         IPostHistoryRepository historyRepository,
         ICampaignRepository campaignRepository,
         RequestAuthHelper authHelper, 
-        IAssetBlobStore blobStore)
+        PostResponseMapper mapper)
     {
         _postRepository = postRepository;
         _historyRepository = historyRepository;
         _campaignRepository = campaignRepository;
         _authHelper = authHelper;
-        _blobStore = blobStore;
+        _mapper = mapper;
     }
 
     [Function("ListUserPosts")]
@@ -56,8 +56,10 @@ public class PostsUserListFunction
 
         string? status = req.Query["status"];
         string? search = req.Query["search"];
+        string? sortBy = req.Query["sortBy"];
+        string? sortOrder = req.Query["sortOrder"];
 
-        var (posts, total) = await _postRepository.GetPaginatedByUserIdAsync(userId, page, pageSize, status, search, cancellationToken);
+        var (posts, total) = await _postRepository.GetPaginatedByUserIdAsync(userId, page, pageSize, status, search, sortBy, sortOrder, cancellationToken);
 
         var postIds = posts.Select(p => p.Id).ToList();
         var campaignIds = posts.Select(p => p.CampaignId).Distinct().ToList();
@@ -70,33 +72,14 @@ public class PostsUserListFunction
         var postUrls = postUrlsTask.Result;
         var campaigns = campaignsTask.Result.ToDictionary(c => c.Id, c => c.Name);
 
-        var containerSas = await _blobStore.GetContainerSasAsync(TimeSpan.FromHours(24), cancellationToken);
-
         var dtos = new List<PostResponse>();
         foreach (var p in posts)
         {
-            var resolvedUrls = new List<string>();
-            if (p.MediaUrls != null)
-            {
-                foreach (var mediaUrl in p.MediaUrls)
-                {
-                    var uri = await _blobStore.GetBlobUriAsync(mediaUrl, TimeSpan.FromHours(24), cancellationToken);
-                    var uriString = uri.ToString();
-
-                    if (!string.IsNullOrEmpty(containerSas) && !uriString.Contains("?"))
-                    {
-                        uriString = $"{uriString}?{containerSas}";
-                    }
-                    resolvedUrls.Add(uriString);
-                }
-            }
-
-            dtos.Add(new PostResponse(
-                p.Id, p.CampaignId, p.UserId, p.Text, resolvedUrls,
-                p.ScheduledTime, p.Status, p.PlatformData, p.CreatedAt, p.UpdatedAt,
-                postUrls.TryGetValue(p.Id, out var url) ? url : null,
-                campaigns.TryGetValue(p.CampaignId, out var campaignName) ? campaignName : null
-            ));
+            dtos.Add(await _mapper.MapAsync(
+                p, 
+                postUrl: postUrls.TryGetValue(p.Id, out var url) ? url : null, 
+                campaignName: campaigns.TryGetValue(p.CampaignId, out var campaignName) ? campaignName : null,
+                cancellationToken: cancellationToken));
         }
 
         var result = new PaginatedList<PostResponse>

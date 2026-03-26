@@ -112,7 +112,13 @@ export function BatchAiGenerateModal({
             <label className="text-sm font-medium">Select Template</label>
             <Select onValueChange={handlePromptSelect} value={selectedPromptId}>
               <SelectTrigger className="w-full bg-muted/30 border-muted-foreground/10 rounded-xl">
-                <SelectValue placeholder={isLoadingPrompts ? "Loading templates..." : "Choose a template"} />
+                <SelectValue placeholder={isLoadingPrompts ? "Loading templates..." : "Choose a template"}>
+                  {(val: string) => {
+                    if (!val) return undefined;
+                    const prompt = prompts.find(p => p.id === val);
+                    return prompt ? prompt.title : undefined;
+                  }}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent className="rounded-xl border-muted-foreground/10">
                 {prompts.map((p) => (

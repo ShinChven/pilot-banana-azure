@@ -15,5 +15,8 @@ export interface DashboardStats {
 }
 
 export const statsApi = {
-  getStats: (token: string | null) => apiGet<DashboardStats>('/stats', token),
+  getStats: (token: string | null, days: number = 7) => {
+    const timezoneOffset = new Date().getTimezoneOffset();
+    return apiGet<DashboardStats>(`/stats?timezoneOffset=${timezoneOffset}&days=${days}`, token);
+  },
 }

@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/src/lib/utils';
+import { POST_MEDIA_ACCEPT, validatePostMediaFiles, getPostMediaKind } from '@/src/lib/post-media';
 import { useAuth } from '../context/AuthContext';
 import { getCampaign } from '../api/campaigns';
 import { createPost } from '../api/posts';
@@ -51,7 +52,7 @@ export default function BatchCreatePage() {
           description: '',
           status: 'Active',
           startDate: '',
-          endDate: '',
+          endDate: data.endDate ? new Date(data.endDate).toLocaleDateString() : '',
           channels: data.channelLinkIds || [],
           posts: [],
           thumbnail: ''
@@ -72,10 +73,19 @@ export default function BatchCreatePage() {
   }, [fetchCampaign]);
 
   const handleFiles = (files: FileList | File[]) => {
-    const newPosts: BatchPost[] = Array.from(files).map((file) => ({
+    const nextFiles = Array.from(files) as File[];
+    for (const file of nextFiles) {
+      const error = validatePostMediaFiles([file]);
+      if (error) {
+        toast.error(error);
+        return;
+      }
+    }
+
+    const newPosts: BatchPost[] = nextFiles.map((file) => ({
       id: Math.random().toString(36).substr(2, 9),
-      file: file as File,
-      preview: URL.createObjectURL(file as Blob),
+      file,
+      preview: URL.createObjectURL(file),
       content: ''
     }));
     
@@ -85,6 +95,7 @@ export default function BatchCreatePage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       handleFiles(e.target.files);
+      e.target.value = '';
     }
   };
 
@@ -121,7 +132,7 @@ export default function BatchCreatePage() {
   const handleConfirm = async () => {
     if (!token || !user || !id) return;
     if (posts.length === 0) {
-      toast.error("Please add at least one image");
+      toast.error("Please add at least one media file");
       return;
     }
 
@@ -170,7 +181,7 @@ export default function BatchCreatePage() {
           </Button>
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-foreground">Create Batch</h1>
-            <p className="text-muted-foreground">Upload multiple images to create posts for <span className="font-semibold text-primary">{campaign.name}</span></p>
+            <p className="text-muted-foreground">Upload image, GIF, or video posts for <span className="font-semibold text-primary">{campaign.name}</span></p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -211,7 +222,7 @@ export default function BatchCreatePage() {
         <input 
           type="file" 
           multiple 
-          accept="image/*,video/mp4" 
+          accept={POST_MEDIA_ACCEPT}
           className="hidden" 
           ref={fileInputRef}
           onChange={handleFileChange}
@@ -224,14 +235,14 @@ export default function BatchCreatePage() {
         </div>
         <div className="text-center">
           <p className="text-lg font-semibold text-foreground">
-            {isDragging ? "Drop files to upload" : "Drag and drop images or video here"}
+            {isDragging ? "Drop files to upload" : "Drag and drop images, GIFs, or video here"}
           </p>
           <p className="text-sm text-muted-foreground">or click to browse from your computer</p>
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium uppercase tracking-wider">
-          <span>JPG, PNG, WEBP, MP4</span>
+          <span>JPG, PNG, WEBP, GIF, MP4</span>
           <span className="w-1 h-1 bg-muted-foreground/30 rounded-full"></span>
-          <span>Up to 10MB each</span>
+          <span>1 media file per post</span>
         </div>
       </div>
 
@@ -257,7 +268,7 @@ export default function BatchCreatePage() {
               <div key={post.id} className="bg-card border border-muted-foreground/10 rounded-2xl overflow-hidden shadow-sm group">
                 <div className="flex h-48">
                   <div className="w-1/3 relative bg-muted">
-                    {post.file.type.startsWith('video/') ? (
+                    {getPostMediaKind(post.file) === 'video' ? (
                       <video src={post.preview} className="h-full w-full object-cover" />
                     ) : (
                       <img src={post.preview} alt="" className="h-full w-full object-cover" />
@@ -277,8 +288,10 @@ export default function BatchCreatePage() {
                   <div className="flex-1 p-4 flex flex-col gap-3">
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Post Content</span>
-                      {post.file.type.startsWith('video/') ? (
+                      {getPostMediaKind(post.file) === 'video' ? (
                         <span className="text-[8px] bg-primary/10 text-primary px-1 rounded font-bold uppercase">Video</span>
+                      ) : getPostMediaKind(post.file) === 'gif' ? (
+                        <span className="text-[8px] bg-primary/10 text-primary px-1 rounded font-bold uppercase">GIF</span>
                       ) : (
                         <ImageIcon className="w-3.5 h-3.5 text-muted-foreground/30" />
                       )}

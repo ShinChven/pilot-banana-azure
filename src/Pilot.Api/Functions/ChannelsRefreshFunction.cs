@@ -4,6 +4,8 @@ using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
 using Pilot.Api.Services;
 using Pilot.Core.Adapters;
+using Pilot.Core.Domain;
+using Pilot.Core.DTOs;
 using Pilot.Core.Repositories;
 
 namespace Pilot.Api.Functions;
@@ -51,9 +53,38 @@ public class ChannelsRefreshFunction
 
         try
         {
-            var success = await adapter.RefreshTokenAsync(channel.Id, channel.TokenSecretName, cancellationToken);
-            var response = req.CreateResponse(success ? HttpStatusCode.OK : HttpStatusCode.BadRequest);
-            await response.WriteAsJsonAsync(new { success }, cancellationToken);
+            var refresh = await adapter.RefreshTokenAsync(channel.Id, channel.TokenSecretName, cancellationToken);
+            if (!refresh.Success)
+            {
+                var failed = req.CreateResponse(HttpStatusCode.BadRequest);
+                await failed.WriteAsJsonAsync(new { success = false }, cancellationToken);
+                return failed;
+            }
+
+            channel.DisplayName = refresh.DisplayName ?? channel.DisplayName;
+            channel.Username = refresh.Username ?? channel.Username;
+            channel.AvatarUrl = refresh.AvatarUrl ?? channel.AvatarUrl;
+            channel.UpdatedAt = DateTimeOffset.UtcNow;
+            channel = await _channelLinkRepository.UpdateAsync(channel, cancellationToken);
+
+            var response = req.CreateResponse(HttpStatusCode.OK);
+            await response.WriteAsJsonAsync(new
+            {
+                success = true,
+                channel = new ChannelLinkResponse(
+                    channel.Id,
+                    channel.UserId,
+                    channel.Platform,
+                    channel.ExternalId,
+                    channel.DisplayName,
+                    channel.Username,
+                    channel.Note,
+                    channel.IsEnabled,
+                    ProfileUrl(channel.Platform, channel.ExternalId),
+                    channel.AvatarUrl,
+                    channel.CreatedAt,
+                    channel.UpdatedAt)
+            }, cancellationToken);
             return response;
         }
         catch (Exception ex)
@@ -63,5 +94,12 @@ public class ChannelsRefreshFunction
             await err.WriteAsJsonAsync(new { error = ex.Message }, cancellationToken);
             return err;
         }
+    }
+
+    private static string? ProfileUrl(string platform, string externalId)
+    {
+        if (string.Equals(platform, ChannelPlatform.X, StringComparison.OrdinalIgnoreCase))
+            return $"https://x.com/i/user/{externalId}";
+        return null;
     }
 }

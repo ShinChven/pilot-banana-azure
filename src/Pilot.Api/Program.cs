@@ -10,12 +10,14 @@ using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Pilot.Core.Repositories;
 using Pilot.Core.Services;
+using Pilot.Core.Domain;
 using Pilot.Api.Options;
 using Pilot.Api.Services;
 using Pilot.Infrastructure.Auth;
 using Pilot.Infrastructure.Blob;
 using Pilot.Infrastructure.Cosmos;
 using Pilot.Infrastructure.AI;
+using Pilot.Infrastructure.Media;
 using Pilot.Adapters;
 using Pilot.Infrastructure.KeyVault;
 
@@ -95,8 +97,10 @@ var host = new HostBuilder()
         services.AddPilotKeyVault(config);
         services.AddPilotAdapters(config);
         services.AddPilotAi();
+        services.AddMediaServices();
         services.AddPilotAuth(config);
         services.AddSingleton<RequestAuthHelper>();
+        services.AddSingleton<PostResponseMapper>();
         services.AddSingleton<PasskeyChallengeService>();
     })
     .Build();

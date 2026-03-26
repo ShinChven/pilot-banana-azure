@@ -5,6 +5,8 @@ export interface PostResponse {
   campaignId: string;
   text: string | null;
   mediaUrls: string[] | null;
+  optimizedUrls: string[] | null;
+  thumbnailUrls: string[] | null;
   scheduledTime: string | null;
   status: string;
   createdAt: string;
@@ -13,17 +15,21 @@ export interface PostResponse {
   campaignName?: string | null;
 }
 
-export function listPosts(userId: string, campaignId: string, token: string, page = 1, pageSize = 10, status?: string, search?: string) {
+export function listPosts(userId: string, campaignId: string, token: string, page = 1, pageSize = 10, status?: string, search?: string, sortBy?: string, sortOrder?: string) {
   let url = `/users/${userId}/campaigns/${campaignId}/posts?page=${page}&pageSize=${pageSize}`;
   if (status) url += `&status=${encodeURIComponent(status)}`;
   if (search) url += `&search=${encodeURIComponent(search)}`;
+  if (sortBy) url += `&sortBy=${encodeURIComponent(sortBy)}`;
+  if (sortOrder) url += `&sortOrder=${encodeURIComponent(sortOrder)}`;
   return apiGet<PaginatedList<PostResponse>>(url, token);
 }
 
-export function listUserPosts(userId: string, token: string, page = 1, pageSize = 10, status?: string, search?: string) {
+export function listUserPosts(userId: string, token: string, page = 1, pageSize = 10, status?: string, search?: string, sortBy?: string, sortOrder?: string) {
   let url = `/users/${userId}/posts?page=${page}&pageSize=${pageSize}`;
   if (status) url += `&status=${encodeURIComponent(status)}`;
   if (search) url += `&search=${encodeURIComponent(search)}`;
+  if (sortBy) url += `&sortBy=${encodeURIComponent(sortBy)}`;
+  if (sortOrder) url += `&sortOrder=${encodeURIComponent(sortOrder)}`;
   return apiGet<PaginatedList<PostResponse>>(url, token);
 }
 

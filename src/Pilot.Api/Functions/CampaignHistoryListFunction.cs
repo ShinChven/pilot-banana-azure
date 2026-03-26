@@ -67,7 +67,8 @@ public class CampaignHistoryListFunction
                 i.Id, i.CampaignId, i.UserId, i.PostId, i.ChannelLinkId, i.Platform, i.ExternalPostId, i.PostUrl, i.PostedAt, i.Status, i.ErrorMessage,
                 AvatarUrl: channel?.AvatarUrl,
                 DisplayName: channel?.DisplayName,
-                Username: channel?.Username
+                Username: channel?.Username,
+                CampaignName: campaign.Name
             );
         }).ToList();
 

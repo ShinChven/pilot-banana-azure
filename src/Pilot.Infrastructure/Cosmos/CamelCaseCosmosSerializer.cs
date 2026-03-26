@@ -6,7 +6,7 @@ namespace Pilot.Infrastructure.Cosmos;
 /// <summary>
 /// Cosmos serializer that uses camelCase for property names so documents have the required "id" field.
 /// </summary>
-internal sealed class CamelCaseCosmosSerializer : CosmosSerializer
+public sealed class CamelCaseCosmosSerializer : CosmosSerializer
 {
     private static readonly JsonSerializerOptions Options = new()
     {

@@ -129,4 +129,27 @@ public class AssetBlobStore : IAssetBlobStore
         var blob = _container.GetBlobClient(blobPath);
         await blob.DeleteIfExistsAsync(DeleteSnapshotsOption.IncludeSnapshots, cancellationToken: cancellationToken);
     }
+
+    public async Task DeleteFolderAsync(string prefix, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(prefix)) return;
+        
+        // Ensure prefix ends with / to avoid partial matches (e.g. "camp" matching "campaign1")
+        if (!prefix.EndsWith("/")) prefix += "/";
+
+        _logger.LogInformation("Deleting all blobs under prefix: {Prefix}", prefix);
+
+        var blobs = _container.GetBlobsAsync(prefix: prefix, cancellationToken: cancellationToken);
+        await foreach (var blob in blobs)
+        {
+            try
+            {
+                await _container.DeleteBlobIfExistsAsync(blob.Name, DeleteSnapshotsOption.IncludeSnapshots, cancellationToken: cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to delete blob {BlobName} during folder cleanup.", blob.Name);
+            }
+        }
+    }
 }

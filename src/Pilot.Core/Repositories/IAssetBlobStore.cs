@@ -19,4 +19,9 @@ public interface IAssetBlobStore
 
     /// <summary>Deletes the blob at the given path.</summary>
     Task DeleteAsync(string blobPath, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Deletes all blobs that start with the specified prefix (simulating folder deletion).
+    /// </summary>
+    Task DeleteFolderAsync(string prefix, CancellationToken cancellationToken = default);
 }

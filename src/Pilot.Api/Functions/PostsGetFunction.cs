@@ -16,13 +16,13 @@ public class PostsGetFunction
 {
     private readonly IPostRepository _postRepository;
     private readonly RequestAuthHelper _authHelper;
-    private readonly IAssetBlobStore _blobStore;
+    private readonly PostResponseMapper _mapper;
 
-    public PostsGetFunction(IPostRepository postRepository, RequestAuthHelper authHelper, IAssetBlobStore blobStore)
+    public PostsGetFunction(IPostRepository postRepository, RequestAuthHelper authHelper, PostResponseMapper mapper)
     {
         _postRepository = postRepository;
         _authHelper = authHelper;
-        _blobStore = blobStore;
+        _mapper = mapper;
     }
 
     [Function("GetPost")]
@@ -41,36 +41,7 @@ public class PostsGetFunction
         if (post == null || post.UserId != userId)
             return new NotFoundResult();
 
-        var containerSas = await _blobStore.GetContainerSasAsync(TimeSpan.FromHours(24), cancellationToken);
-
-        var resolvedUrls = new List<string>();
-        if (post.MediaUrls != null)
-        {
-            foreach (var url in post.MediaUrls)
-            {
-                var uri = await _blobStore.GetBlobUriAsync(url, TimeSpan.FromHours(24), cancellationToken);
-                var uriString = uri.ToString();
-
-                if (!string.IsNullOrEmpty(containerSas) && !uriString.Contains("?"))
-                {
-                    uriString = $"{uriString}?{containerSas}";
-                }
-                resolvedUrls.Add(uriString);
-            }
-        }
-
-        var response = new PostResponse(
-            post.Id,
-            post.CampaignId,
-            post.UserId,
-            post.Text,
-            resolvedUrls,
-            post.ScheduledTime,
-            post.Status,
-            post.PlatformData,
-            post.CreatedAt,
-            post.UpdatedAt
-        );
+        var response = await _mapper.MapAsync(post, cancellationToken: cancellationToken);
 
         return new OkObjectResult(response);
     }
