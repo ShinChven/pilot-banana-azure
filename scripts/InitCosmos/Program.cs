@@ -26,7 +26,10 @@ var containers = new (string Name, string PartitionKeyPath)[]
     ("channelLinks", "/userId"),
     ("prompts", "/userId"),
     ("postHistory", "/campaignId"),
-    ("postAiTasks", "/userId")
+    ("postAiTasks", "/userId"),
+    ("userAccessTokens", "/userId"),
+    ("userApiClients", "/userId"),
+    ("oauthCodes", "/clientId")
 };
 
 foreach (var (name, partitionKeyPath) in containers)

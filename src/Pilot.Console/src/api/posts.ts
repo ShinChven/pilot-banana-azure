@@ -128,9 +128,9 @@ export async function sendPost(userId: string, campaignId: string, postId: strin
   return res.data;
 }
 
-export async function batchGenerateText(userId: string, campaignId: string, postIds: string[], promptText: string, token: string) {
+export async function batchGenerateText(userId: string, campaignId: string, postIds: string[], promptText: string, token: string, includeImages = true) {
   const path = `/users/${userId}/posts/batch-generate-text`;
-  const res = await apiPost<{ count: number; taskIds: string[] }>(path, { postIds, campaignId, promptText }, token);
+  const res = await apiPost<{ count: number; taskIds: string[] }>(path, { postIds, campaignId, promptText, includeImages }, token);
   return res;
 }
 

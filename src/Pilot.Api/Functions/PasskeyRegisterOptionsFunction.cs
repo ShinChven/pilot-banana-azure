@@ -1,6 +1,7 @@
 using System.Net;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
+using Microsoft.Extensions.Configuration;
 using Pilot.Api.Services;
 
 namespace Pilot.Api.Functions;
@@ -9,16 +10,19 @@ public class PasskeyRegisterOptionsFunction
 {
     private readonly PasskeyChallengeService _challengeService;
     private readonly RequestAuthHelper _authHelper;
+    private readonly string _rpId;
 
-    public PasskeyRegisterOptionsFunction(PasskeyChallengeService challengeService, RequestAuthHelper authHelper)
+    public PasskeyRegisterOptionsFunction(PasskeyChallengeService challengeService, RequestAuthHelper authHelper, IConfiguration configuration)
     {
         _challengeService = challengeService;
         _authHelper = authHelper;
+        var frontendUrl = configuration["FrontendBaseUrl"] ?? "";
+        _rpId = Uri.TryCreate(frontendUrl, UriKind.Absolute, out var uri) ? uri.Host : "localhost";
     }
 
     [Function("PasskeyRegisterOptions")]
     public async Task<HttpResponseData> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "auth/passkeys/register-options")] HttpRequestData req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "api/auth/passkeys/register-options")] HttpRequestData req,
         CancellationToken cancellationToken)
     {
         var auth = await _authHelper.GetUserFromRequestAsync(req, cancellationToken);
@@ -32,7 +36,7 @@ public class PasskeyRegisterOptionsFunction
         var options = new
         {
             challenge,
-            rp = new { name = "Pilot Banana", id = req.Url.Host == "localhost" ? "localhost" : req.Url.Host },
+            rp = new { name = "Pilot Banana", id = _rpId },
             user = new
             {
                 id = auth.Value.UserId,

@@ -43,7 +43,7 @@ public class ChannelsConnectFunction
 
     [Function("ChannelsConnect")]
     public async Task<HttpResponseData> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "channels/connect/{platform}")] HttpRequestData req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "api/channels/connect/{platform}")] HttpRequestData req,
         string platform,
         CancellationToken cancellationToken)
     {

@@ -16,7 +16,7 @@ public class HealthFunction
 
     [Function("Health")]
     public async Task<HttpResponseData> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "health")] HttpRequestData req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "api/health")] HttpRequestData req,
         CancellationToken cancellationToken)
     {
         _logger.LogInformation("Health check requested.");

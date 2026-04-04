@@ -357,7 +357,7 @@ export default function ChannelsPage() {
                   <Button
                     variant={channel.enabled ? "outline" : "default"}
                     size="sm"
-                    className="h-8 text-[10px] px-3 font-bold uppercase tracking-wider rounded-full shadow-sm"
+                    className="h-8 text-xs px-3 font-bold uppercase tracking-wider rounded-full shadow-sm"
                     onClick={() => toggleChannelEnabled(channel.id, channel.enabled)}
                   >
                     {channel.enabled ? 'Deactivate' : 'Activate'}

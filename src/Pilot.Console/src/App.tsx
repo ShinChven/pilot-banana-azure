@@ -2,7 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import Home from './pages/Home';
 import LoginPage from './pages/LoginPage';
-import ProfilePage from './pages/ProfilePage';
+import SettingsPage from './pages/SettingsPage';
 import CampaignsPage from './pages/Campaigns';
 import ScheduledPostsPage from './pages/ScheduledPosts';
 import CampaignProfilePage from './pages/CampaignProfile';
@@ -17,6 +17,10 @@ import PromptFormPage from './pages/PromptForm';
 import AiTasksPage from './pages/AiTasks';
 import CampaignHistoryPage from './pages/CampaignHistory';
 import GlobalHistoryPage from './pages/GlobalHistory';
+import OAuthAuthorizePage from './pages/OAuthAuthorizePage';
+import TermsOfServicePage from './pages/TermsOfService';
+import PrivacyPolicyPage from './pages/PrivacyPolicy';
+import PostProfilePage from './pages/PostProfilePage';
 import { TooltipProvider } from './components/ui/tooltip';
 import { Toaster } from './components/ui/sonner';
 import { ThemeProvider } from './context/ThemeContext';
@@ -26,13 +30,16 @@ import { ThemeProvider as NextThemeProvider } from 'next-themes';
 
 export default function App() {
   return (
-    <NextThemeProvider attribute="class" defaultTheme="system" enableSystem>
+    <NextThemeProvider {...({ attribute: "class", defaultTheme: "system", enableSystem: true } as unknown as any)}>
       <ThemeProvider>
         <AuthProvider>
           <TooltipProvider>
             <Router>
               <Routes>
                 <Route path="/login" element={<LoginPage />} />
+                <Route path="/oauth/authorize" element={<OAuthAuthorizePage />} />
+                <Route path="/terms" element={<TermsOfServicePage />} />
+                <Route path="/privacy" element={<PrivacyPolicyPage />} />
                 <Route
                   path="/*"
                   element={
@@ -40,7 +47,7 @@ export default function App() {
                       <Layout>
                         <Routes>
                           <Route path="/" element={<Home />} />
-                          <Route path="/profile" element={<ProfilePage />} />
+                          <Route path="/settings" element={<SettingsPage />} />
                           <Route path="/campaigns" element={<CampaignsPage />} />
                           <Route path="/scheduled-posts" element={<ScheduledPostsPage />} />
                           <Route path="/campaigns/new" element={<CampaignFormPage />} />
@@ -51,6 +58,7 @@ export default function App() {
                           <Route path="/campaigns/:id/batch/create" element={<BatchCreatePage />} />
                           <Route path="/campaigns/:campaignId/posts/new" element={<PostFormPage />} />
                           <Route path="/campaigns/:campaignId/posts/edit/:postId" element={<PostFormPage />} />
+                          <Route path="/campaigns/:campaignId/posts/:postId" element={<PostProfilePage />} />
                           <Route path="/channels" element={<ChannelsPage />} />
                           <Route path="/prompts" element={<PromptsPage />} />
                           <Route path="/prompts/new" element={<PromptFormPage />} />

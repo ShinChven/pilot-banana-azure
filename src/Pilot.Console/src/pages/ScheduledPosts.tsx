@@ -156,7 +156,7 @@ export default function ScheduledPostsPage() {
 
           {dayPosts.length > 0 && (
             <div className="mt-1 flex flex-col gap-1">
-              <div className="bg-amber-500/10 text-amber-600 text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center justify-between">
+              <div className="bg-amber-500/10 text-amber-600 text-xs font-bold px-1.5 py-0.5 rounded flex items-center justify-between">
                 <span>{dayPosts.length} {dayPosts.length === 1 ? 'Post' : 'Posts'}</span>
                 <Clock className="w-2.5 h-2.5" />
               </div>
@@ -261,158 +261,186 @@ export default function ScheduledPostsPage() {
         </div>
 
         <TabsContent value="list" className="space-y-6">
-          <div className="grid gap-4">
+          <Card className="border-muted-foreground/10 shadow-xl overflow-hidden rounded-2xl bg-card/50 backdrop-blur-sm">
             {isLoading ? (
-              <div className="flex flex-col items-center justify-center py-20 gap-4">
-                <Loader2 className="w-10 h-10 animate-spin text-primary" />
-                <p className="text-muted-foreground animate-pulse">Loading scheduled posts...</p>
+              <div className="flex flex-col items-center justify-center py-24 gap-4">
+                <Loader2 className="w-12 h-12 animate-spin text-primary/80" />
+                <p className="text-muted-foreground animate-pulse font-medium">Loading scheduled posts...</p>
               </div>
             ) : posts.length === 0 ? (
-              <Card className="border-dashed border-2 bg-muted/20">
-                <CardContent className="flex flex-col items-center justify-center py-16 gap-4 text-center">
-                  <div className="h-16 w-16 bg-muted rounded-full flex items-center justify-center">
-                    <Send className="w-8 h-8 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold">No scheduled posts</h3>
-                    <p className="text-muted-foreground max-w-xs">You don't have any posts scheduled for the future. Create some in your campaigns!</p>
-                  </div>
-                  <Button variant="outline" className="rounded-xl px-8" onClick={() => navigate('/campaigns')}>
-                    View Campaigns
-                  </Button>
-                </CardContent>
-              </Card>
+              <div className="flex flex-col items-center justify-center py-20 gap-6 text-center">
+                <div className="h-20 w-20 bg-muted/50 rounded-3xl flex items-center justify-center shadow-inner border border-muted-foreground/5">
+                  <Send className="w-10 h-10 text-muted-foreground/40" />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-xl font-bold tracking-tight">No scheduled posts</h3>
+                  <p className="text-muted-foreground max-w-xs mx-auto">
+                    You don't have any posts scheduled. Create some high-impact content in your campaigns!
+                  </p>
+                </div>
+                <Button variant="outline" className="rounded-xl px-8 font-bold border-muted-foreground/10 hover:bg-primary/5 hover:text-primary transition-all" onClick={() => navigate('/campaigns')}>
+                  Explore Campaigns
+                </Button>
+              </div>
             ) : (
-              posts.map((post) => {
-                const mediaUrl = post.mediaUrls?.[0] || '';
-                const thumbnailUrl = post.thumbnailUrls?.[0] || '';
-                const optimizedUrl = post.optimizedUrls?.[0] || '';
-                const mediaKind = getPostMediaKindFromUrl(mediaUrl);
-                const previewUrl = getPostPreviewUrl(mediaUrl, thumbnailUrl, optimizedUrl);
+              <div className="flex flex-col">
+                {/* List Header - Desktop Only */}
+                <div className="hidden lg:grid lg:grid-cols-[80px_1fr_180px_100px] items-center gap-6 px-6 py-4 bg-muted/40 border-b border-muted-foreground/10 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70">
+                  <span>Preview</span>
+                  <span>Post Details</span>
+                  <span>Schedule</span>
+                  <span className="text-right">Action</span>
+                </div>
 
-                return (
-                <Card key={post.id} className="overflow-hidden border-muted-foreground/10 hover:border-primary/30 transition-all group hover:shadow-md rounded-xl bg-card">
-                  <div className="flex items-center p-3 gap-4">
-                    {/* Media Thumbnail */}
-                    <div className="h-16 w-16 rounded-lg overflow-hidden bg-muted flex-shrink-0 border border-muted-foreground/5 shadow-inner">
-                      {previewUrl ? (
-                        mediaKind === 'video' ? (
-                          <div className="relative h-full w-full">
-                             {getPostMediaKindFromUrl(previewUrl) === 'image' ? (
-                               <img src={previewUrl} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
-                             ) : (
-                               <video
-                                 src={previewUrl}
-                                 className="h-full w-full object-cover"
-                                 muted
-                                 playsInline
-                                 autoPlay
-                                 loop
-                                 preload="metadata"
-                               />
-                             )}
-                             <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                               <div className="bg-white/20 backdrop-blur-sm p-1 rounded-full">
-                                 <div className="w-0 h-0 border-t-[4px] border-t-transparent border-l-[6px] border-l-white border-b-[4px] border-b-transparent ml-0.5" />
-                               </div>
-                             </div>
+                {/* List Items */}
+                <div className="divide-y divide-muted-foreground/5">
+                  {posts.map((post) => {
+                    const mediaUrl = post.mediaUrls?.[0] || '';
+                    const thumbnailUrl = post.thumbnailUrls?.[0] || '';
+                    const optimizedUrl = post.optimizedUrls?.[0] || '';
+                    const mediaKind = getPostMediaKindFromUrl(mediaUrl);
+                    const previewUrl = getPostPreviewUrl(mediaUrl, thumbnailUrl, optimizedUrl);
+
+                    return (
+                      <div key={post.id} className="group hover:bg-primary/[0.02] transition-all duration-300 px-4 py-4 sm:px-6 sm:py-5 flex items-center gap-4 sm:gap-6 lg:grid lg:grid-cols-[80px_1fr_180px_100px]">
+                        {/* Media Thumbnail */}
+                        <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-xl overflow-hidden bg-muted flex-shrink-0 border border-muted-foreground/5 shadow-md transition-transform group-hover:scale-105 duration-500">
+                          {previewUrl ? (
+                            mediaKind === 'video' ? (
+                              <div className="relative h-full w-full">
+                                {getPostMediaKindFromUrl(previewUrl) === 'image' ? (
+                                  <img src={previewUrl} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+                                ) : (
+                                  <video
+                                    src={previewUrl}
+                                    className="h-full w-full object-cover"
+                                    muted
+                                    playsInline
+                                    autoPlay
+                                    loop
+                                    preload="metadata"
+                                  />
+                                )}
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-[1px] opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <div className="bg-white/30 backdrop-blur-md p-1.5 rounded-full shadow-lg">
+                                    <div className="w-0 h-0 border-t-[5px] border-t-transparent border-l-[8px] border-l-white border-b-[5px] border-b-transparent ml-0.5" />
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <img src={previewUrl} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+                            )
+                          ) : (
+                            <div className="h-full w-full flex items-center justify-center text-muted-foreground/20 bg-muted/10">
+                              <ImageIcon className="w-8 h-8" />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Content Area */}
+                        <div className="flex-1 min-w-0 flex flex-col gap-1.5 lg:gap-2">
+                          <div className="flex items-center flex-wrap gap-2">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-primary bg-primary/10 px-2 py-0.5 rounded border border-primary/10 shadow-sm transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                              {post.campaignName || 'General Campaign'}
+                            </span>
+                            <Badge variant="outline" className={cn(
+                              "text-[9px] uppercase font-black px-2 h-5 border-none shadow-sm",
+                              post.status === 'Draft' ? "bg-muted text-muted-foreground" :
+                              post.status === 'Scheduled' ? "bg-amber-500/10 text-amber-600 dark:text-amber-400" :
+                              post.status === 'Posted' ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" :
+                              post.status === 'Generating' ? "bg-blue-500/10 text-blue-600 dark:text-blue-400" :
+                              "bg-destructive/10 text-destructive"
+                            )}>
+                              {post.status}
+                            </Badge>
                           </div>
-                        ) : (
-                          <img src={previewUrl} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
-                        )
-                      ) : (
-                        <div className="h-full w-full flex items-center justify-center text-muted-foreground/20">
-                          <ImageIcon className="w-6 h-6" />
+                          
+                          <div className="space-y-1">
+                            <p className="text-sm font-bold text-foreground leading-tight line-clamp-1 group-hover:text-primary transition-colors">
+                              {post.text || <span className="italic font-normal text-muted-foreground/40">No caption provided</span>}
+                            </p>
+                            {post.text && post.text.length > 80 && (
+                              <p className="text-xs text-muted-foreground line-clamp-1 opacity-70">
+                                {post.text.substring(0, 150)}...
+                              </p>
+                            )}
+                          </div>
                         </div>
-                      )}
-                    </div>
 
-                    {/* Content Area */}
-                    <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-0.5">
-                          <span className="text-[10px] font-black uppercase tracking-wider text-primary bg-primary/5 px-2 py-0.5 rounded border border-primary/10">
-                            {post.campaignName || 'Campaign'}
-                          </span>
-                          <Badge variant="outline" className={cn(
-                            "text-[9px] uppercase font-bold px-1.5 h-4 border-none",
-                            post.status === 'Draft' ? "bg-muted text-muted-foreground" :
-                            post.status === 'Scheduled' ? "bg-amber-500/10 text-amber-500" :
-                            post.status === 'Posted' ? "bg-emerald-500/10 text-emerald-500" :
-                            post.status === 'Generating' ? "bg-blue-500/10 text-blue-500" :
-                            "bg-destructive/10 text-destructive"
-                          )}>
-                            {post.status}
-                          </Badge>
+                        {/* Scheduling Info */}
+                        <div className="hidden lg:flex flex-col gap-1">
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground font-bold tracking-tight">
+                            <CalendarIcon className="w-3.5 h-3.5 text-primary/60" />
+                            {post.scheduledTime ? new Date(post.scheduledTime).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'No Date'}
+                          </div>
+                          <div className="flex items-center gap-2 text-xs font-black text-foreground/80">
+                            <Clock className="w-3.5 h-3.5 text-primary/60" />
+                            {post.scheduledTime ? new Date(post.scheduledTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) : 'N/A'}
+                          </div>
                         </div>
-                        <p className="text-xs font-medium text-foreground truncate max-w-md">
-                          {post.text || <span className="italic text-muted-foreground/50">No text content</span>}
-                        </p>
+
+                        {/* Action */}
+                        <div className="shrink-0 flex items-center justify-end">
+                          {/* Mobile-only scheduling info */}
+                          <div className="flex flex-col items-end mr-4 lg:hidden">
+                             <span className="text-[10px] font-bold text-muted-foreground">
+                               {post.scheduledTime ? new Date(post.scheduledTime).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : ''}
+                             </span>
+                             <span className="text-[10px] font-black text-foreground">
+                               {post.scheduledTime ? new Date(post.scheduledTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                             </span>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-10 w-10 rounded-2xl bg-muted/30 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all border border-transparent hover:border-primary/20"
+                            onClick={() => navigate(`/campaigns/${post.campaignId}`)}
+                            title="Go to Campaign"
+                          >
+                            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                          </Button>
+                        </div>
                       </div>
-
-                      {/* Scheduling Info */}
-                      <div className="flex flex-col sm:items-end sm:text-right shrink-0">
-                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-bold uppercase tracking-tight">
-                          <Clock className="w-3 h-3" />
-                          {post.scheduledTime ? new Date(post.scheduledTime).toLocaleDateString() : 'N/A'}
-                        </div>
-                        <div className="text-[10px] text-foreground font-medium">
-                          {post.scheduledTime ? new Date(post.scheduledTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Action */}
-                    <div className="shrink-0 flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 rounded-full text-muted-foreground hover:text-primary hover:bg-primary/5"
-                        onClick={() => navigate(`/campaigns/${post.campaignId}`)}
-                        title="Go to Campaign"
-                      >
-                        <ArrowRight className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-                );
-              })
+                    );
+                  })}
+                </div>
+              </div>
             )}
-          </div>
+          </Card>
 
           {/* Pagination */}
           {totalItems > 0 && (
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 bg-card rounded-2xl border border-muted-foreground/10 shadow-sm">
-              <div className="text-sm text-muted-foreground">
-                Showing <span className="font-semibold text-foreground">{(page - 1) * pageSize + 1}</span> to <span className="font-semibold text-foreground">{Math.min(page * pageSize, totalItems)}</span> of <span className="font-semibold text-foreground">{totalItems}</span> posts
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 bg-card/40 backdrop-blur-sm rounded-2xl border border-muted-foreground/10 shadow-lg">
+              <div className="text-sm text-muted-foreground font-medium">
+                Showing <span className="font-black text-foreground">{(page - 1) * pageSize + 1}</span> to <span className="font-black text-foreground">{Math.min(page * pageSize, totalItems)}</span> of <span className="font-black text-foreground">{totalItems}</span> posts
               </div>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-9 w-9 rounded-xl border-muted-foreground/10"
+                  className="h-10 w-10 rounded-xl border-muted-foreground/10 bg-card/60 hover:bg-primary/5 hover:text-primary transition-all disabled:opacity-30"
                   onClick={() => updateQueryParams({ page: Math.max(1, page - 1) })}
                   disabled={page === 1 || isLoading}
                 >
-                  <ChevronLeft className="w-4 h-4" />
+                  <ChevronLeft className="w-5 h-5" />
                 </Button>
-                <div className="text-sm font-bold min-w-[80px] text-center">
-                  Page {page} of {totalPages || 1}
+                <div className="text-xs font-black min-w-[100px] text-center bg-muted/40 h-10 flex items-center justify-center rounded-xl border border-muted-foreground/5 shadow-inner">
+                  PAGE {page} OF {totalPages || 1}
                 </div>
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-9 w-9 rounded-xl border-muted-foreground/10"
+                  className="h-10 w-10 rounded-xl border-muted-foreground/10 bg-card/60 hover:bg-primary/5 hover:text-primary transition-all disabled:opacity-30"
                   onClick={() => updateQueryParams({ page: Math.min(totalPages, page + 1) })}
                   disabled={page >= totalPages || isLoading}
                 >
-                  <ChevronRight className="w-4 h-4" />
+                  <ChevronRight className="w-5 h-5" />
                 </Button>
               </div>
             </div>
           )}
         </TabsContent>
+
 
         <TabsContent value="calendar">
           <Card className="border-muted-foreground/10 shadow-xl overflow-hidden rounded-2xl">
@@ -438,7 +466,7 @@ export default function ScheduledPostsPage() {
             <CardContent className="p-0">
               <div className="grid grid-cols-7 border-b bg-muted/20">
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                  <div key={day} className="py-3 text-center text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground border-r last:border-r-0">
+                  <div key={day} className="py-3 text-center text-xs font-black uppercase tracking-[0.2em] text-muted-foreground border-r last:border-r-0">
                     {day}
                   </div>
                 ))}

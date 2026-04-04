@@ -22,12 +22,9 @@ export function getRegisterOptions(token: string) {
 
 export type RegisterPasskeyBody = {
   id: string;
-  rawId: string;
-  type: string;
-  response: {
-    attestationObject: string;
-    clientDataJSON: string;
-  };
+  publicKey: string;
+  clientDataJSON: string;
+  label?: string;
 };
 
 export function registerPasskey(body: RegisterPasskeyBody, token: string) {

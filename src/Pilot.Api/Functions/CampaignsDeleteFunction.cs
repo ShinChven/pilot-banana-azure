@@ -28,7 +28,7 @@ public class CampaignsDeleteFunction
 
     [Function("DeleteCampaign")]
     public async Task<HttpResponseData> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "delete", Route = "campaigns/{id}")] HttpRequestData req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "delete", Route = "api/campaigns/{id}")] HttpRequestData req,
         string id,
         CancellationToken cancellationToken)
     {

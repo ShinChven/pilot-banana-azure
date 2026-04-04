@@ -511,7 +511,7 @@ export default function BatchActionPage() {
                     <Badge
                       variant="outline"
                       className={cn(
-                        "text-[10px] uppercase tracking-widest font-bold h-5 px-2 border-none",
+                        "text-xs uppercase tracking-widest font-bold h-5 px-2 border-none",
                         post.status === 'Draft' ? "bg-muted text-muted-foreground" :
                         post.status === 'Scheduled' ? "bg-amber-500/10 text-amber-500" :
                         post.status === 'Posted' ? "bg-emerald-500/10 text-emerald-500" :

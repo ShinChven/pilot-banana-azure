@@ -23,6 +23,13 @@ public class PostAiTask
     /// </summary>
     public string? ErrorMessage { get; set; }
 
+    /// <summary>
+    /// The generated text result if status is Succeeded.
+    /// </summary>
+    public string? ResultText { get; set; }
+
+    public bool IncludeImages { get; set; } = true;
+
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? UpdatedAt { get; set; }
 }

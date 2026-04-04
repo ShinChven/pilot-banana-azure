@@ -263,7 +263,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate('/profile')}>Profile</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/settings')}>Settings</DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogoutClick} className="text-destructive focus:text-destructive">Sign out</DropdownMenuItem>
                 </DropdownMenuGroup>

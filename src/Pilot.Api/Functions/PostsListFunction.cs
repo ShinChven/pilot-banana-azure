@@ -38,7 +38,7 @@ public class PostsListFunction
 
     [Function("ListPosts")]
     public async Task<IActionResult> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "users/{userId}/campaigns/{campaignId}/posts")] HttpRequest req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "api/users/{userId}/campaigns/{campaignId}/posts")] HttpRequest req,
         string userId,
         string campaignId,
         CancellationToken cancellationToken)

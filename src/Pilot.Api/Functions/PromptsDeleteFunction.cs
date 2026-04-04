@@ -22,7 +22,7 @@ public class PromptsDeleteFunction
 
     [Function("DeletePrompt")]
     public async Task<HttpResponseData> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "delete", Route = "prompts/{id}")] HttpRequestData req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "delete", Route = "api/prompts/{id}")] HttpRequestData req,
         string id,
         CancellationToken cancellationToken)
     {

@@ -30,7 +30,7 @@ public class CampaignsListFunction
 
     [Function("ListCampaigns")]
     public async Task<HttpResponseData> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "campaigns")] HttpRequestData req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "api/campaigns")] HttpRequestData req,
         CancellationToken cancellationToken)
     {
         var auth = await _authHelper.GetUserFromRequestAsync(req, cancellationToken);
@@ -60,9 +60,13 @@ public class CampaignsListFunction
                 .Where(p => p.ScheduledTime.HasValue && (p.Status == PostStatus.Scheduled || p.Status == PostStatus.Posted))
                 .MaxBy(p => p.ScheduledTime)
                 ?.ScheduledTime;
+            var draftPosts = posts.Count(p => p.Status == PostStatus.Draft);
+            var scheduledPosts = posts.Count(p => p.Status == PostStatus.Scheduled);
+            var failedPosts = posts.Count(p => p.Status == PostStatus.Failed);
+            var generatingPosts = posts.Count(p => p.Status == PostStatus.Generating);
             dtos.Add(new CampaignResponse(
                 c.Id, c.UserId, c.Name, c.Description, c.ChannelLinkIds ?? new List<string>(), c.Status.ToString(), c.CreatedAt, c.UpdatedAt,
-                posts.Count, posts.Count(p => p.Status == PostStatus.Posted), endDate
+                posts.Count, posts.Count(p => p.Status == PostStatus.Posted), endDate, draftPosts, scheduledPosts, failedPosts, generatingPosts
             ));
         }
 

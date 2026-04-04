@@ -307,7 +307,6 @@ export default function CampaignsPage() {
                   <div className="flex items-center justify-between rounded-2xl border border-muted-foreground/10 bg-muted/30 px-3 py-2">
                     <div>
                       <p className="text-sm font-medium text-foreground">Channels</p>
-                      <p className="text-xs text-muted-foreground">Showing up to 3 channel avatars per campaign</p>
                     </div>
                     <AvatarGroup className="items-center">
                       {visibleChannels.map((channel) => (
@@ -318,7 +317,7 @@ export default function CampaignsPage() {
                       ))}
                       {extraChannelCount > 0 && (
                         <AvatarGroupCount className="size-6 text-xs">
-                          +{extraChannelCount}
+                          ...
                         </AvatarGroupCount>
                       )}
                     </AvatarGroup>

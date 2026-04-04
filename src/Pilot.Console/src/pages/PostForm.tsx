@@ -168,7 +168,7 @@ export default function PostFormPage() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      const files = Array.from(e.target.files);
+      const files = Array.from(e.target.files) as File[];
       const error = mergeAndValidatePostMedia(existingImageItems.length + newFiles.length, files);
       if (error) {
         toast.error(error);
@@ -198,7 +198,7 @@ export default function PostFormPage() {
     setIsDragging(false);
 
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const files = Array.from(e.dataTransfer.files);
+      const files = Array.from(e.dataTransfer.files) as File[];
       const error = mergeAndValidatePostMedia(existingImageItems.length + newFiles.length, files);
       if (error) {
         toast.error(error);
@@ -292,7 +292,7 @@ export default function PostFormPage() {
   const targetChannels = channels.filter(ch => campaign.channels.includes(ch.id));
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 pb-20">
+    <div className="w-full space-y-8 pb-20">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => navigate(`/campaigns/${campaignId}`)}>
           <ArrowLeft className="w-5 h-5" />
@@ -413,9 +413,9 @@ export default function PostFormPage() {
                                   <div className="flex-1 min-w-0 truncate text-xs text-muted-foreground font-mono">
                                     {item.url.split('/').pop()}
                                   </div>
-                                  {item.kind === 'video' && <Badge variant="secondary" className="text-[10px] uppercase">Video</Badge>}
-                                  {item.kind === 'gif' && <Badge variant="secondary" className="text-[10px] uppercase">GIF</Badge>}
-                                  <Badge variant="outline" className="text-[10px] uppercase">Existing</Badge>
+                                  {item.kind === 'video' && <Badge variant="secondary" className="text-xs uppercase">Video</Badge>}
+                                  {item.kind === 'gif' && <Badge variant="secondary" className="text-xs uppercase">GIF</Badge>}
+                                  <Badge variant="outline" className="text-xs uppercase">Existing</Badge>
                                   <Button
                                     variant="ghost"
                                     size="icon"
@@ -442,9 +442,9 @@ export default function PostFormPage() {
                             <div className="flex-1 min-w-0 truncate text-xs text-foreground font-medium">
                               {file.name}
                             </div>
-                            {getPostMediaKind(file) === 'video' && <Badge variant="secondary" className="text-[10px] uppercase">Video</Badge>}
-                            {getPostMediaKind(file) === 'gif' && <Badge variant="secondary" className="text-[10px] uppercase">GIF</Badge>}
-                            <Badge className="text-[10px] uppercase bg-primary text-primary-foreground border-none">New</Badge>
+                            {getPostMediaKind(file) === 'video' && <Badge variant="secondary" className="text-xs uppercase">Video</Badge>}
+                            {getPostMediaKind(file) === 'gif' && <Badge variant="secondary" className="text-xs uppercase">GIF</Badge>}
+                            <Badge className="text-xs uppercase bg-primary text-primary-foreground border-none">New</Badge>
                             <Button
                               variant="ghost"
                               size="icon"
@@ -526,7 +526,7 @@ export default function PostFormPage() {
                     </span>
                   )}
                 </div>
-                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                <p className="text-xs text-muted-foreground leading-relaxed">
                   Leave empty to save as a draft. Posts will be automatically published at the selected time.
                 </p>
               </div>
@@ -535,15 +535,19 @@ export default function PostFormPage() {
 
               <div className="space-y-3">
                 <Label className="text-foreground font-semibold">Target Channels</Label>
-                <div className="flex -space-x-2">
-                  {targetChannels.map(ch => (
-                    <div key={ch.id} className="h-10 w-10 rounded-full ring-4 ring-card bg-muted overflow-hidden border border-muted-foreground/5 shadow-sm" title={`${ch.username} ${ch.handle || ''} (${ch.platform})`}>
-                      {ch.avatar ? <img src={ch.avatar} alt={ch.username} className="h-full w-full object-cover" referrerPolicy="no-referrer" /> : <div className="h-full w-full flex items-center justify-center font-bold text-xs">{ch.username[0]}</div>}
-                    </div>
-                  ))}
-                </div>
+                {targetChannels.length > 0 && (
+                  <div className="flex -space-x-2">
+                    {targetChannels.map(ch => (
+                      <div key={ch.id} className="h-10 w-10 rounded-full ring-4 ring-card bg-muted overflow-hidden border border-muted-foreground/5 shadow-sm" title={`${ch.username} ${ch.handle || ''} (${ch.platform})`}>
+                        {ch.avatar ? <img src={ch.avatar} alt={ch.username} className="h-full w-full object-cover" referrerPolicy="no-referrer" /> : <div className="h-full w-full flex items-center justify-center font-bold text-xs">{ch.username[0]}</div>}
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <p className="text-xs text-muted-foreground">
-                  This post will be sent to all {targetChannels.length} channels connected to this campaign.
+                  {targetChannels.length > 0 
+                    ? `This post will be sent to all ${targetChannels.length} channels connected to this campaign.`
+                    : "No channels connected to this campaign. Please connect channels in campaign settings."}
                 </p>
               </div>
             </CardContent>

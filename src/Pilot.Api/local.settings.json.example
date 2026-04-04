@@ -16,14 +16,17 @@
     "Auth__Jwt__ExpiryMinutes": "60",
     "XOAuth__ClientId": "",
     "XOAuth__ClientSecret": "",
+    "ApiBaseUrl": "http://localhost:7071",
     "XOAuth__ApiBaseUrl": "http://localhost:7071",
     "XOAuth__DashboardBaseUrl": "http://localhost:5173",
+    "FrontendBaseUrl": "http://localhost:5173",
     "Cosmos__UsersContainer": "users",
     "Cosmos__CampaignsContainer": "campaigns",
     "Cosmos__PostsContainer": "posts",
     "Cosmos__ChannelLinksContainer": "channelLinks",
     "Cosmos__PromptsContainer": "prompts",
     "Cosmos__PostHistoryContainer": "postHistory",
+    "Cosmos__UserAccessTokensContainer": "userAccessTokens",
     "GEMINI_API_KEY": "YOUR_GEMINI_API_KEY"
   }
 }

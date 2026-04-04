@@ -49,7 +49,7 @@ public class ChannelsCallbackFunction
 
     [Function("ChannelsCallback")]
     public async Task<HttpResponseData> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "channels/callback/{platform}")] HttpRequestData req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "api/channels/callback/{platform}")] HttpRequestData req,
         string platform,
         CancellationToken cancellationToken)
     {

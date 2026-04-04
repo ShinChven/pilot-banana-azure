@@ -15,5 +15,9 @@ public record CampaignResponse(
     DateTimeOffset? UpdatedAt,
     int TotalPosts = 0,
     int PostedPosts = 0,
-    DateTimeOffset? EndDate = null
+    DateTimeOffset? EndDate = null,
+    int DraftPosts = 0,
+    int ScheduledPosts = 0,
+    int FailedPosts = 0,
+    int GeneratingPosts = 0
 );

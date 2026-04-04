@@ -4,7 +4,9 @@ import { Select as SelectPrimitive } from "@base-ui/react/select"
 import { cn } from "@/src/lib/utils"
 import { ChevronDownIcon, CheckIcon } from "lucide-react"
 
-function Select({ ...props }: SelectPrimitive.Root.Props) {
+function Select<Value, Multiple extends boolean = false>({
+  ...props
+}: SelectPrimitive.Root.Props<Value, Multiple>) {
   return <SelectPrimitive.Root data-slot="select" {...props} />
 }
 
@@ -89,7 +91,7 @@ function SelectItem({
     <SelectPrimitive.Item
       data-slot="select-item"
       className={cn(
-        "relative flex w-full cursor-default items-center rounded-sm py-1.5 pr-8 pl-2 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50",
+        "relative flex w-full cursor-pointer items-center rounded-sm py-1.5 pr-8 pl-2 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50",
         className
       )}
       {...props}

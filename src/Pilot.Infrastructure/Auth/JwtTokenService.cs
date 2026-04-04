@@ -43,7 +43,7 @@ public class JwtTokenService : IJwtTokenService
             _options.Issuer,
             _options.Audience,
             claims,
-            expires: expires.DateTime,
+            expires: expires.UtcDateTime,
             signingCredentials: creds
         );
         var jwt = new JwtSecurityTokenHandler().WriteToken(token);
@@ -52,9 +52,12 @@ public class JwtTokenService : IJwtTokenService
 
     public ClaimsPrincipal? ValidateToken(string bearerToken)
     {
-        if (string.IsNullOrEmpty(bearerToken) || !bearerToken.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        if (string.IsNullOrEmpty(bearerToken))
             return null;
-        var token = bearerToken["Bearer ".Length..].Trim();
+        // Accept both "Bearer <token>" and raw token
+        var token = bearerToken.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
+            ? bearerToken["Bearer ".Length..].Trim()
+            : bearerToken.Trim();
         if (string.IsNullOrEmpty(token))
             return null;
 

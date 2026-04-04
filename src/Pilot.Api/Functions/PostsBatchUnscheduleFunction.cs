@@ -35,7 +35,7 @@ public class PostsBatchUnscheduleFunction
 
     [Function("BatchUnschedulePosts")]
     public async Task<IActionResult> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "users/{userId}/posts/batch-unschedule")] HttpRequest req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "api/users/{userId}/posts/batch-unschedule")] HttpRequest req,
         string userId,
         CancellationToken cancellationToken)
     {

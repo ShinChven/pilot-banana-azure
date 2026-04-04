@@ -38,7 +38,7 @@ public class PostsUserListFunction
 
     [Function("ListUserPosts")]
     public async Task<IActionResult> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "users/{userId}/posts")] HttpRequest req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "api/users/{userId}/posts")] HttpRequest req,
         string userId,
         CancellationToken cancellationToken)
     {

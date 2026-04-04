@@ -173,7 +173,7 @@ export default function BatchCreatePage() {
   if (!campaign) return null;
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 pb-32">
+    <div className="w-full space-y-8 pb-32">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => navigate(`/campaigns/${id}/batch`)}>
@@ -287,7 +287,7 @@ export default function BatchCreatePage() {
                   </div>
                   <div className="flex-1 p-4 flex flex-col gap-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Post Content</span>
+                      <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Post Content</span>
                       {getPostMediaKind(post.file) === 'video' ? (
                         <span className="text-[8px] bg-primary/10 text-primary px-1 rounded font-bold uppercase">Video</span>
                       ) : getPostMediaKind(post.file) === 'gif' ? (

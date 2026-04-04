@@ -28,7 +28,7 @@ public class CampaignsUpdateFunction
 
     [Function("UpdateCampaign")]
     public async Task<HttpResponseData> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "patch", Route = "campaigns/{id}")] HttpRequestData req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "patch", Route = "api/campaigns/{id}")] HttpRequestData req,
         string id,
         CancellationToken cancellationToken)
     {

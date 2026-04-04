@@ -19,7 +19,7 @@ public class PasskeyDeleteFunction
 
     [Function("DeletePasskey")]
     public async Task<HttpResponseData> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "delete", Route = "auth/passkeys/{credentialId}")] HttpRequestData req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "delete", Route = "api/auth/passkeys/{credentialId}")] HttpRequestData req,
         string credentialId,
         CancellationToken cancellationToken)
     {

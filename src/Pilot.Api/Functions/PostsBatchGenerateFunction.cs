@@ -40,11 +40,11 @@ public class PostsBatchGenerateFunction
         });
     }
 
-    public record BatchGenerateRequest(string[] PostIds, string CampaignId, string PromptText);
+    public record BatchGenerateRequest(string[] PostIds, string CampaignId, string PromptText, bool? IncludeImages);
 
     [Function("BatchGeneratePosts")]
     public async Task<IActionResult> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "users/{userId}/posts/batch-generate-text")] HttpRequest req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "api/users/{userId}/posts/batch-generate-text")] HttpRequest req,
         string userId,
         CancellationToken cancellationToken)
     {
@@ -81,6 +81,7 @@ public class PostsBatchGenerateFunction
                         CampaignId = body.CampaignId,
                         UserId = userId,
                         PromptText = body.PromptText.Trim(),
+                        IncludeImages = body.IncludeImages ?? true,
                         Status = AiTaskStatus.Pending
                     };
                     await _taskRepository.CreateAsync(task, cancellationToken);

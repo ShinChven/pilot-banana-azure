@@ -41,7 +41,7 @@ public class PostsCreateFunction
 
     [Function("CreatePost")]
     public async Task<IActionResult> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "users/{userId}/campaigns/{campaignId}/posts")] HttpRequest req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "api/users/{userId}/campaigns/{campaignId}/posts")] HttpRequest req,
         string userId,
         string campaignId,
         CancellationToken cancellationToken)

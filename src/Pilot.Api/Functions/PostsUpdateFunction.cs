@@ -43,7 +43,7 @@ public class PostsUpdateFunction
 
     [Function("UpdatePost")]
     public async Task<IActionResult> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "put", Route = "users/{userId}/campaigns/{campaignId}/posts/{postId}")] HttpRequest req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "put", Route = "api/users/{userId}/campaigns/{campaignId}/posts/{postId}")] HttpRequest req,
         string userId,
         string campaignId,
         string postId,

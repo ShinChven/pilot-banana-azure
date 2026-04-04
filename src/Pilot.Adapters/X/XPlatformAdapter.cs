@@ -19,7 +19,8 @@ public class XPlatformAdapter : IPlatformAdapter
 {
     private const int UploadChunkSizeBytes = 2 * 1024 * 1024;
     private const int UploadRetryCount = 3;
-    private const long XImageTargetBytes = 4_700_000;
+    // X simple upload body limit is ~5 MB. Base64 inflates by ~33%, so raw target ≈ 3.5 MB.
+    private const long XImageTargetBytes = 3_500_000;
     private readonly ISecretStore _secretStore;
     private readonly IDistributedLockService _lockService;
     private readonly IImageOptimizer _imageOptimizer;

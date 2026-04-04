@@ -28,7 +28,7 @@ public class PostDeleteFunction
 
     [Function("DeletePost")]
     public async Task<HttpResponseData> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "delete", Route = "users/{userId}/campaigns/{campaignId}/posts/{id}")] HttpRequestData req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "delete", Route = "api/users/{userId}/campaigns/{campaignId}/posts/{id}")] HttpRequestData req,
         string userId, string campaignId, string id, CancellationToken cancellationToken)
     {
         var auth = await _authHelper.GetUserFromRequestAsync(req, cancellationToken);

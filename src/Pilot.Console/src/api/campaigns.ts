@@ -12,6 +12,10 @@ export interface CampaignResponse {
   totalPosts: number;
   postedPosts: number;
   endDate: string | null;
+  draftPosts: number;
+  scheduledPosts: number;
+  failedPosts: number;
+  generatingPosts: number;
 }
 
 export interface CreateCampaignRequest {

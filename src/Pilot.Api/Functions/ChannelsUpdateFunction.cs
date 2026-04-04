@@ -28,7 +28,7 @@ public class ChannelsUpdateFunction
 
     [Function("UpdateChannel")]
     public async Task<HttpResponseData> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "patch", Route = "channels/{id}")] HttpRequestData req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "patch", Route = "api/channels/{id}")] HttpRequestData req,
         string id,
         CancellationToken cancellationToken)
     {

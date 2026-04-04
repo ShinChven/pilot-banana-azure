@@ -61,52 +61,57 @@ public class PostAiTaskProcessor
                 throw new Exception($"Post {task.PostId} not found.");
             }
 
-            // 4. Download images
+            // 4. Download images (prefer optimized versions to reduce bandwidth)
             var images = new List<byte[]>();
-            if (post.MediaUrls != null)
+            if (task.IncludeImages)
             {
-                var containerSas = await _blobStore.GetContainerSasAsync(TimeSpan.FromHours(24), cancellationToken);
-
-                foreach (var url in post.MediaUrls)
+                var imageUrls = (post.OptimizedUrls != null && post.OptimizedUrls.Count > 0)
+                    ? post.OptimizedUrls
+                    : post.MediaUrls;
+                if (imageUrls != null)
                 {
-                    try
+                    var containerSas = await _blobStore.GetContainerSasAsync(TimeSpan.FromHours(24), cancellationToken);
+
+                    foreach (var url in imageUrls)
                     {
-                        var uri = await _blobStore.GetBlobUriAsync(url, TimeSpan.FromHours(24), cancellationToken);
-
-                        if (!string.IsNullOrEmpty(containerSas) && string.IsNullOrEmpty(uri.Query))
+                        try
                         {
-                            var uriBuilder = new UriBuilder(uri) { Query = containerSas };
-                            uri = uriBuilder.Uri;
-                        }
+                            var uri = await _blobStore.GetBlobUriAsync(url, TimeSpan.FromHours(24), cancellationToken);
 
-                        var resp = await _httpClient.GetAsync(uri, cancellationToken);
-                        if (!resp.IsSuccessStatusCode)
-                        {
-                            var errorBody = await resp.Content.ReadAsStringAsync(cancellationToken);
-                            _logger.LogWarning("Failed to download image {Url} for task {TaskId}. Status: {Status}. Body: {Body}", url, task.Id, (int)resp.StatusCode, errorBody);
-                            continue;
-                        }
-
-                        var bytes = await resp.Content.ReadAsByteArrayAsync(cancellationToken);
-                        if (bytes == null || bytes.Length == 0) continue;
-
-                        // Quick XML check
-                        if (bytes.Length > 0 && bytes[0] == '<')
-                        {
-                            var contentSample = System.Text.Encoding.UTF8.GetString(bytes.Take(Math.Min(bytes.Length, 100)).ToArray());
-                            if (contentSample.StartsWith("<?xml") || contentSample.StartsWith("<Error"))
+                            if (!string.IsNullOrEmpty(containerSas) && string.IsNullOrEmpty(uri.Query))
                             {
-                                _logger.LogWarning("Downloaded asset for task {TaskId} is an XML error message, not an image. URL: {Url}", task.Id, url);
+                                var uriBuilder = new UriBuilder(uri) { Query = containerSas };
+                                uri = uriBuilder.Uri;
+                            }
+
+                            var resp = await _httpClient.GetAsync(uri, cancellationToken);
+                            if (!resp.IsSuccessStatusCode)
+                            {
+                                var errorBody = await resp.Content.ReadAsStringAsync(cancellationToken);
+                                _logger.LogWarning("Failed to download image {Url} for task {TaskId}. Status: {Status}. Body: {Body}", url, task.Id, (int)resp.StatusCode, errorBody);
                                 continue;
                             }
+
+                            var bytes = await resp.Content.ReadAsByteArrayAsync(cancellationToken);
+                            if (bytes == null || bytes.Length == 0) continue;
+
+                            // Quick XML check
+                            if (bytes.Length > 0 && bytes[0] == '<')
+                            {
+                                var contentSample = System.Text.Encoding.UTF8.GetString(bytes.Take(Math.Min(bytes.Length, 100)).ToArray());
+                                if (contentSample.StartsWith("<?xml") || contentSample.StartsWith("<Error"))
+                                {
+                                    _logger.LogWarning("Downloaded asset for task {TaskId} is an XML error message, not an image. URL: {Url}", task.Id, url);
+                                    continue;
+                                }
+                            }
+
+                            images.Add(bytes);
                         }
-
-                        images.Add(bytes);
-                    }
-                    catch (Exception ex)
-                    {
-
-                        _logger.LogWarning(ex, "Failed to download image {Url} for task {TaskId}. Skipping image.", url, task.Id);
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to download image {Url} for task {TaskId}. Skipping image.", url, task.Id);
+                        }
                     }
                 }
             }
@@ -127,6 +132,7 @@ public class PostAiTaskProcessor
 
             // 7. Mark Task Succeeded
             task.Status = AiTaskStatus.Succeeded;
+            task.ResultText = generatedText.Trim();
             task.UpdatedAt = DateTimeOffset.UtcNow;
             await _taskRepository.UpdateAsync(task, cancellationToken);
             

@@ -15,4 +15,7 @@ public class CosmosOptions
     public string PromptsContainer { get; set; } = "prompts";
     public string PostHistoryContainer { get; set; } = "postHistory";
     public string PostAiTasksContainer { get; set; } = "postAiTasks";
+    public string UserAccessTokensContainer { get; set; } = "userAccessTokens";
+    public string UserApiClientsContainer { get; set; } = "userApiClients";
+    public string OAuthAuthorizationCodesContainer { get; set; } = "oauthCodes";
 }
