@@ -28,7 +28,7 @@ public class CampaignsGetFunction
 
     [Function("GetCampaign")]
     public async Task<HttpResponseData> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "campaigns/{id}")] HttpRequestData req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "api/campaigns/{id}")] HttpRequestData req,
         string id,
         CancellationToken cancellationToken)
     {
@@ -56,11 +56,16 @@ public class CampaignsGetFunction
             .MaxBy(p => p.ScheduledTime)
             ?.ScheduledTime;
 
+        var draftPosts = posts.Count(p => p.Status == PostStatus.Draft);
+        var scheduledPosts = posts.Count(p => p.Status == PostStatus.Scheduled);
+        var failedPosts = posts.Count(p => p.Status == PostStatus.Failed);
+        var generatingPosts = posts.Count(p => p.Status == PostStatus.Generating);
+
         var response = req.CreateResponse(HttpStatusCode.OK);
         await response.WriteAsJsonAsync(new CampaignResponse(
             campaign.Id, campaign.UserId, campaign.Name, campaign.Description,
             campaign.ChannelLinkIds ?? new List<string>(), campaign.Status.ToString(), campaign.CreatedAt, campaign.UpdatedAt,
-            totalPosts, postedPosts, endDate
+            totalPosts, postedPosts, endDate, draftPosts, scheduledPosts, failedPosts, generatingPosts
         ), cancellationToken);
         return response;
     }

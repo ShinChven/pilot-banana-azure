@@ -37,7 +37,7 @@ public class GlobalHistoryListFunction
 
     [Function("GlobalHistoryList")]
     public async Task<IActionResult> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "system/history")] HttpRequest req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "api/system/history")] HttpRequest req,
         CancellationToken cancellationToken)
     {
         var auth = await _authHelper.GetUserFromRequestAsync(req, cancellationToken);

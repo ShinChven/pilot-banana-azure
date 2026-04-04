@@ -24,7 +24,7 @@ public class AuthMeFunction
 
     [Function("AuthMe")]
     public async Task<HttpResponseData> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", "patch", Route = "auth/me")] HttpRequestData req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", "patch", Route = "api/auth/me")] HttpRequestData req,
         CancellationToken cancellationToken)
     {
         var auth = await _authHelper.GetUserFromRequestAsync(req, cancellationToken);

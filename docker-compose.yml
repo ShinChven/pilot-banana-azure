@@ -12,7 +12,7 @@ services:
     # .NET SDK requires HTTPS; default key is in docs/LOCAL.md and .env.example
 
     volumes:
-      - pb-cosmos-data:/var/lib/cosmosdb
+      - cosmos-data:/var/lib/cosmosdb
 
   azurite:
     image: mcr.microsoft.com/azure-storage/azurite
@@ -22,8 +22,8 @@ services:
       - "10002:10002"  # Table
     command: azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --skipApiVersionCheck
     volumes:
-      - pb-azurite-data:/data
+      - azurite-data:/data
 
 volumes:
-  pb-azurite-data:
-  pb-cosmos-data:
+  azurite-data:
+  cosmos-data:

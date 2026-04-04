@@ -296,7 +296,7 @@ export default function Home() {
                       <div className="relative mt-0.5">
                         <Avatar className="h-9 w-9 border border-muted-foreground/10">
                           <AvatarImage src={item.avatarUrl} alt={item.displayName || item.username} />
-                          <AvatarFallback className="bg-primary/5 text-primary text-[10px]">
+                          <AvatarFallback className="bg-primary/5 text-primary text-xs">
                             {(item.displayName || item.username || "??").substring(0, 2).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
@@ -330,14 +330,14 @@ export default function Home() {
                             <span className="text-primary/70 italic">Campaign</span>
                           )}
                         </p>
-                        <p className="text-[10px] text-muted-foreground/70 truncate">
+                        <p className="text-xs text-muted-foreground/70 truncate">
                           {item.status === 'Completed'
                             ? "Successfully published"
                             : (item.errorMessage || "Error occurred during posting.")}
                         </p>
                       </div>
                     </div>
-                    <div className="ml-auto text-[10px] text-muted-foreground font-medium whitespace-nowrap pl-2 mt-0.5">
+                    <div className="ml-auto text-xs text-muted-foreground font-medium whitespace-nowrap pl-2 mt-0.5">
                       {item.postUrl && (
                         <a href={item.postUrl} target="_blank" rel="noopener noreferrer" className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "h-6 gap-1.5 px-2 rounded-full mr-2")}>
                             View <ExternalLink className="w-3.5 h-3.5" />

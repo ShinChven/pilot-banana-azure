@@ -6,6 +6,7 @@ export interface AiTask {
   campaignId: string;
   userId: string;
   promptText: string;
+  resultText: string | null;
   status: 'Pending' | 'Processing' | 'Succeeded' | 'Failed';
   errorMessage: string | null;
   createdAt: string;

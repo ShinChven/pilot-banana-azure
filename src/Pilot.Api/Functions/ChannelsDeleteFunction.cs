@@ -30,7 +30,7 @@ public class ChannelsDeleteFunction
 
     [Function("DeleteChannel")]
     public async Task<HttpResponseData> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "delete", Route = "channels/{id}")] HttpRequestData req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "delete", Route = "api/channels/{id}")] HttpRequestData req,
         string id,
         CancellationToken cancellationToken)
     {

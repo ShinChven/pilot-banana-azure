@@ -74,6 +74,13 @@ import { getCampaign, updateCampaign, type CampaignResponse } from '../api/campa
 import { listPosts, deletePost, sendPost, updatePost, batchUnschedulePosts, type PostResponse } from '../api/posts';
 import { listChannels } from '../api/channels';
 import { BatchAiGenerateModal } from '../components/BatchAiGenerateModal';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/src/components/ui/select";
 import { getPostMediaKindFromUrl, getPostPreviewUrl } from '@/src/lib/post-media';
 
 /**
@@ -117,7 +124,7 @@ const MediaElement = ({
     return (
       <video
         src={src}
-        className={className}
+        className={cn(className, onClick && "cursor-pointer")}
         onClick={onClick}
         controls={controls}
         autoPlay={autoPlay}
@@ -131,7 +138,7 @@ const MediaElement = ({
     <img
       src={src}
       alt={alt}
-      className={className}
+      className={cn(className, onClick && "cursor-pointer")}
       onClick={onClick}
       referrerPolicy="no-referrer"
     />
@@ -283,14 +290,14 @@ const PostMedia = ({ images, thumbs, opts }: { images?: string[], thumbs?: strin
             <img
               src={item.source}
               alt={alt}
-              className={className}
+              className={cn(className, "cursor-pointer")}
               onClick={() => openLightbox(index)}
               referrerPolicy="no-referrer"
             />
           ) : (
             <video
               src={item.source}
-              className={className}
+              className={cn(className, "cursor-pointer")}
               onClick={() => openLightbox(index)}
               muted
               playsInline
@@ -436,9 +443,9 @@ export default function CampaignProfilePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { token, user } = useAuth();
   const [searchQuery, setSearchQuery] = React.useState(searchParams.get('q') || '');
-  const sortBy = searchParams.get('sortBy') || 'scheduledTime';
-  const sortOrder = searchParams.get('sortOrder') || 'desc';
-  const statusFilter = searchParams.get('status');
+  const statusFilter = searchParams.get('status') || 'Scheduled';
+  const sortBy = searchParams.get('sortBy') || (statusFilter === 'Draft' ? 'createdAt' : 'scheduledTime');
+  const sortOrder = searchParams.get('sortOrder') || (statusFilter === 'Scheduled' ? 'asc' : 'desc');
 
   const [campaign, setCampaign] = React.useState<Campaign | null>(null);
   const [channels, setChannels] = React.useState<Channel[]>([]);
@@ -486,7 +493,7 @@ export default function CampaignProfilePage() {
           token, 
           page, 
           pageSize, 
-          statusFilter || undefined, 
+          statusFilter === 'Total' ? undefined : statusFilter, 
           searchParams.get('q') || undefined,
           sortBy,
           sortOrder
@@ -506,7 +513,11 @@ export default function CampaignProfilePage() {
           posts: [],
           thumbnail: '',
           totalPosts: c.totalPosts,
-          postedPosts: c.postedPosts
+          postedPosts: c.postedPosts,
+          draftPosts: c.draftPosts,
+          scheduledPosts: c.scheduledPosts,
+          failedPosts: c.failedPosts,
+          generatingPosts: c.generatingPosts
         });
       }
 
@@ -744,17 +755,86 @@ export default function CampaignProfilePage() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" className="gap-2" onClick={() => navigate(`/campaigns/edit/${campaign.id}`)}>
-            <Settings className="w-4 h-4" /> Settings
+          {/* Search Bar Moving here */}
+          <div className="relative w-full sm:w-auto">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search posts..."
+              className="pl-10 w-full sm:w-64 h-9 bg-card border-muted-foreground/10 transition-all rounded-full"
+              value={searchQuery}
+              onChange={(e) => { 
+                const q = e.target.value;
+                setSearchQuery(q); 
+                updateQueryParams({ q, page: 1 });
+              }}
+            />
+          </div>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger render={(props) => (
+              <Button {...props} variant="outline" size="sm" className="h-9 gap-2 border-muted-foreground/10 text-muted-foreground flex-1 sm:flex-none justify-between sm:justify-center min-w-[140px] rounded-full">
+                <SortAsc className="w-3.5 h-3.5" />
+                {sortBy === 'scheduledTime' ? 'Time' : 'Date'}
+                <ChevronDown className="w-3 h-3 opacity-50" />
+              </Button>
+            )} nativeButton={true} />
+            <DropdownMenuContent align="end" className="min-w-[14rem] rounded-xl border-muted-foreground/10">
+              <DropdownMenuLabel>Sort Options</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                onClick={() => updateQueryParams({ sortBy: 'scheduledTime', sortOrder: 'asc', page: 1 })}
+                className="grid grid-cols-[1fr_20px] items-center gap-2"
+              >
+                <span>Scheduled (Soonest First)</span>
+                <div className="flex justify-center text-primary font-bold">
+                  {sortBy === 'scheduledTime' && sortOrder === 'asc' && '✓'}
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => updateQueryParams({ sortBy: 'scheduledTime', sortOrder: 'desc', page: 1 })}
+                className="grid grid-cols-[1fr_20px] items-center gap-2"
+              >
+                <span>Scheduled (Latest First)</span>
+                <div className="flex justify-center text-primary font-bold">
+                  {sortBy === 'scheduledTime' && sortOrder === 'desc' && '✓'}
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                onClick={() => updateQueryParams({ sortBy: 'createdAt', sortOrder: 'desc', page: 1 })}
+                className="grid grid-cols-[1fr_20px] items-center gap-2"
+              >
+                <span>Created (Newest First)</span>
+                <div className="flex justify-center text-primary font-bold">
+                  {sortBy === 'createdAt' && sortOrder === 'desc' && '✓'}
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => updateQueryParams({ sortBy: 'createdAt', sortOrder: 'asc', page: 1 })}
+                className="grid grid-cols-[1fr_20px] items-center gap-2"
+              >
+                <span>Created (Oldest First)</span>
+                <div className="flex justify-center text-primary font-bold">
+                  {sortBy === 'createdAt' && sortOrder === 'asc' && '✓'}
+                </div>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <Separator orientation="vertical" className="h-6 mx-2 hidden md:block self-center" />
+
+          {/* Shrunk buttons */}
+          <Button variant="outline" size="icon" className="h-9 w-9 border-muted-foreground/10 rounded-full" onClick={() => navigate(`/campaigns/edit/${campaign.id}`)} title="Settings">
+            <Settings className="w-4 h-4" />
           </Button>
-          <Button variant="outline" className="gap-2" onClick={() => navigate(`/campaigns/${campaign.id}/batch`)}>
-            <Layers className="w-4 h-4" /> Batch Actions
+          <Button variant="outline" size="icon" className="h-9 w-9 border-muted-foreground/10 rounded-full" onClick={() => navigate(`/campaigns/${campaign.id}/batch`)} title="Batch Actions">
+            <Layers className="w-4 h-4" />
           </Button>
-          <Button variant="outline" className="gap-2" onClick={() => navigate(`/campaigns/${campaign.id}/history`)}>
-            <Clock className="w-4 h-4" /> History
+          <Button variant="outline" size="icon" className="h-9 w-9 border-muted-foreground/10 rounded-full" onClick={() => navigate(`/campaigns/${campaign.id}/history`)} title="History">
+            <Clock className="w-4 h-4" />
           </Button>
-          <Button className="gap-2" onClick={handleAddPost}>
-            <Plus className="w-4 h-4" /> Add Post
+          <Button size="icon" className="h-9 w-9 rounded-full shadow-lg shadow-primary/20" onClick={handleAddPost} title="Add Post">
+            <Plus className="w-4 h-4" />
           </Button>
         </div>
       </div>
@@ -778,13 +858,129 @@ export default function CampaignProfilePage() {
                     style={{ width: `${campaign.totalPosts && campaign.totalPosts > 0 ? ((campaign.postedPosts || 0) / campaign.totalPosts) * 100 : 0}%` }}
                 />
               </div>
-              <p className="mt-2 text-xs opacity-80">
+              <p className="mt-2 text-xs opacity-80 mb-4">
                 {campaign.postedPosts || 0} of {campaign.totalPosts || 0} posts published
               </p>
+              
+              <div className="hidden sm:grid grid-cols-2 gap-2 mb-4 text-xs">
+                <button 
+                  onClick={() => updateQueryParams({ status: statusFilter === 'Draft' ? 'Total' : 'Draft', sortOrder: 'desc', page: 1 })}
+                  className={cn(
+                    "cursor-pointer rounded p-2 flex flex-col justify-center items-center transition-all hover:bg-primary-foreground/20",
+                    statusFilter === 'Draft' ? "bg-primary-foreground text-primary" : "bg-primary-foreground/10"
+                  )}
+                >
+                  <span className="font-bold text-lg">{campaign.draftPosts || 0}</span>
+                  <span className="opacity-80 uppercase tracking-wider text-[10px]">Draft</span>
+                </button>
+                <button 
+                  onClick={() => updateQueryParams({ status: statusFilter === 'Scheduled' ? 'Total' : 'Scheduled', sortOrder: statusFilter === 'Scheduled' ? 'desc' : 'asc', page: 1 })}
+                  className={cn(
+                    "cursor-pointer rounded p-2 flex flex-col justify-center items-center transition-all hover:bg-primary-foreground/20",
+                    statusFilter === 'Scheduled' ? "bg-primary-foreground text-primary" : "bg-primary-foreground/10"
+                  )}
+                >
+                  <span className="font-bold text-lg">{campaign.scheduledPosts || 0}</span>
+                  <span className="opacity-80 uppercase tracking-wider text-[10px]">Scheduled</span>
+                </button>
+                <button 
+                  onClick={() => updateQueryParams({ status: statusFilter === 'Posted' ? 'Total' : 'Posted', sortOrder: 'desc', page: 1 })}
+                  className={cn(
+                    "cursor-pointer rounded p-2 flex flex-col justify-center items-center transition-all hover:bg-primary-foreground/20",
+                    statusFilter === 'Posted' ? "bg-primary-foreground text-primary" : "bg-primary-foreground/10"
+                  )}
+                >
+                  <span className="font-bold text-lg">{campaign.postedPosts || 0}</span>
+                  <span className="opacity-80 uppercase tracking-wider text-[10px]">Posted</span>
+                </button>
+                <button 
+                  onClick={() => updateQueryParams({ status: statusFilter === 'Failed' ? 'Total' : 'Failed', sortOrder: 'desc', page: 1 })}
+                  className={cn(
+                    "cursor-pointer rounded p-2 flex flex-col justify-center items-center transition-all hover:bg-primary-foreground/20",
+                    statusFilter === 'Failed' ? "bg-primary-foreground text-primary" : "bg-primary-foreground/10"
+                  )}
+                >
+                  <span className="font-bold text-lg">{campaign.failedPosts || 0}</span>
+                  <span className="opacity-80 uppercase tracking-wider text-[10px]">Failed</span>
+                </button>
+                <button 
+                  onClick={() => updateQueryParams({ status: statusFilter === 'Generating' ? 'Total' : 'Generating', sortOrder: 'desc', page: 1 })}
+                  className={cn(
+                    "cursor-pointer rounded p-2 flex flex-col justify-center items-center transition-all hover:bg-primary-foreground/20",
+                    statusFilter === 'Generating' ? "bg-primary-foreground text-primary" : "bg-primary-foreground/10"
+                  )}
+                >
+                  <span className="font-bold text-lg">{campaign.generatingPosts || 0}</span>
+                  <span className="opacity-80 uppercase tracking-wider text-[10px]">Generating</span>
+                </button>
+                <button 
+                  onClick={() => updateQueryParams({ status: 'Total', sortOrder: 'desc', page: 1 })}
+                  className={cn(
+                    "cursor-pointer rounded p-2 flex flex-col justify-center items-center transition-all hover:bg-primary-foreground/20",
+                    statusFilter === 'Total' ? "bg-primary-foreground text-primary" : "bg-primary-foreground/10"
+                  )}
+                >
+                  <span className="font-bold text-lg">{campaign.totalPosts || 0}</span>
+                  <span className="opacity-80 uppercase tracking-wider text-[10px]">Total</span>
+                </button>
+              </div>
+
+              <div className="sm:hidden mb-4">
+                <Select 
+                  value={statusFilter} 
+                  onValueChange={(value) => {
+                    const nextSortOrder = value === 'Scheduled' ? 'asc' : 'desc';
+                    updateQueryParams({ status: value, sortOrder: nextSortOrder, page: 1 });
+                  }}
+                >
+                  <SelectTrigger className="w-full bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground font-bold h-12 rounded-xl">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-muted-foreground/10">
+                    <SelectItem value="Total">
+                      <div className="flex items-center justify-between gap-4 w-full">
+                        <span>Total Posts</span>
+                        <span className="font-bold text-primary">{campaign.totalPosts || 0}</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="Draft">
+                      <div className="flex items-center justify-between gap-4 w-full">
+                        <span>Draft</span>
+                        <span className="font-bold text-primary">{campaign.draftPosts || 0}</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="Scheduled">
+                      <div className="flex items-center justify-between gap-4 w-full">
+                        <span>Scheduled</span>
+                        <span className="font-bold text-primary">{campaign.scheduledPosts || 0}</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="Generating">
+                      <div className="flex items-center justify-between gap-4 w-full">
+                        <span>Generating</span>
+                        <span className="font-bold text-primary">{campaign.generatingPosts || 0}</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="Posted">
+                      <div className="flex items-center justify-between gap-4 w-full">
+                        <span>Published</span>
+                        <span className="font-bold text-primary">{campaign.postedPosts || 0}</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="Failed">
+                      <div className="flex items-center justify-between gap-4 w-full">
+                        <span>Failed</span>
+                        <span className="font-bold text-primary">{campaign.failedPosts || 0}</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               <Button
                 variant={campaign.status === 'Active' ? "outline" : "secondary"}
                 className={cn(
-                  "w-full mt-4 gap-2 transition-colors",
+                  "w-full mt-2 gap-2 transition-colors",
                   campaign.status === 'Active'
                     ? "border-primary-foreground/20 hover:bg-primary-foreground/10 bg-transparent text-primary-foreground"
                     : "bg-primary-foreground text-primary hover:bg-primary-foreground/90 border-none"
@@ -840,14 +1036,14 @@ export default function CampaignProfilePage() {
                           >
                             <span className="text-xs font-medium truncate max-w-[100px] text-foreground group-hover/link:text-primary">{channel.username}</span>
                             {channel.handle && (
-                              <span className="text-[10px] text-muted-foreground truncate max-w-[100px] leading-tight">{channel.handle}</span>
+                              <span className="text-xs text-muted-foreground truncate max-w-[100px] leading-tight">{channel.handle}</span>
                             )}
                           </a>
                         ) : (
                           <div className="flex flex-col min-w-0">
                             <span className="text-xs font-medium truncate max-w-[100px] text-foreground">{channel.username}</span>
                             {channel.handle && (
-                              <span className="text-[10px] text-muted-foreground truncate max-w-[100px] leading-tight">{channel.handle}</span>
+                              <span className="text-xs text-muted-foreground truncate max-w-[100px] leading-tight">{channel.handle}</span>
                             )}
                           </div>
                         )}
@@ -867,96 +1063,9 @@ export default function CampaignProfilePage() {
           </Card>
         </div>
 
-        {/* Main Content - Scheduled Posts */}
+        {/* Main Content - Campaign Posts */}
         <div className="lg:col-span-3 space-y-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-xl font-bold text-foreground">Scheduled Posts</h2>
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="relative w-full sm:w-auto">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search posts..."
-                  className="pl-10 w-full sm:w-64 h-9 bg-card border-muted-foreground/10 transition-all"
-                  value={searchQuery}
-                  onChange={(e) => { 
-                    const q = e.target.value;
-                    setSearchQuery(q); 
-                    updateQueryParams({ q, page: 1 });
-                  }}
-                />
-              </div>
 
-              <DropdownMenu>
-                <DropdownMenuTrigger render={(props) => (
-                  <Button {...props} variant="outline" size="sm" className="h-9 gap-2 border-muted-foreground/10 text-muted-foreground flex-1 sm:flex-none justify-between sm:justify-center min-w-[140px]">
-                    <Filter className="w-3.5 h-3.5" />
-                    {statusFilter || 'All Status'}
-                    <ChevronDown className="w-3 h-3 opacity-50" />
-                  </Button>
-                )} nativeButton={true} />
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => updateQueryParams({ status: null, page: 1 })}>All Status</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => updateQueryParams({ status: 'Scheduled', page: 1 })}>Scheduled</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => updateQueryParams({ status: 'Posted', page: 1 })}>Posted</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => updateQueryParams({ status: 'Draft', page: 1 })}>Draft</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => updateQueryParams({ status: 'Failed', page: 1 })}>Failed</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              <DropdownMenu>
-                <DropdownMenuTrigger render={(props) => (
-                  <Button {...props} variant="outline" size="sm" className="h-9 gap-2 border-muted-foreground/10 text-muted-foreground flex-1 sm:flex-none justify-between sm:justify-center min-w-[140px] rounded-xl">
-                    <SortAsc className="w-3.5 h-3.5" />
-                    {sortBy === 'scheduledTime' ? 'Scheduled Time' : 'Creation Date'}
-                    <ChevronDown className="w-3 h-3 opacity-50" />
-                  </Button>
-                )} nativeButton={true} />
-                <DropdownMenuContent align="end" className="min-w-[14rem] rounded-xl border-muted-foreground/10">
-                  <DropdownMenuLabel>Sort Options</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem 
-                    onClick={() => updateQueryParams({ sortBy: 'scheduledTime', sortOrder: 'asc', page: 1 })}
-                    className="grid grid-cols-[1fr_20px] items-center gap-2"
-                  >
-                    <span>Scheduled (Soonest First)</span>
-                    <div className="flex justify-center text-primary font-bold">
-                      {sortBy === 'scheduledTime' && sortOrder === 'asc' && '✓'}
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    onClick={() => updateQueryParams({ sortBy: 'scheduledTime', sortOrder: 'desc', page: 1 })}
-                    className="grid grid-cols-[1fr_20px] items-center gap-2"
-                  >
-                    <span>Scheduled (Latest First)</span>
-                    <div className="flex justify-center text-primary font-bold">
-                      {sortBy === 'scheduledTime' && sortOrder === 'desc' && '✓'}
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem 
-                    onClick={() => updateQueryParams({ sortBy: 'createdAt', sortOrder: 'desc', page: 1 })}
-                    className="grid grid-cols-[1fr_20px] items-center gap-2"
-                  >
-                    <span>Created (Newest First)</span>
-                    <div className="flex justify-center text-primary font-bold">
-                      {sortBy === 'createdAt' && sortOrder === 'desc' && '✓'}
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    onClick={() => updateQueryParams({ sortBy: 'createdAt', sortOrder: 'asc', page: 1 })}
-                    className="grid grid-cols-[1fr_20px] items-center gap-2"
-                  >
-                    <span>Created (Oldest First)</span>
-                    <div className="flex justify-center text-primary font-bold">
-                      {sortBy === 'createdAt' && sortOrder === 'asc' && '✓'}
-                    </div>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
 
           <div className="space-y-8">
             {filteredPosts.map((post) => (
@@ -964,20 +1073,22 @@ export default function CampaignProfilePage() {
                 <div className="p-4 sm:p-6 lg:p-8 space-y-6">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="flex items-center gap-4">
-                      <div className="flex -space-x-3">
-                        {connectedChannels.map(ch => (
-                            <div
-                              key={ch.id}
-                              className={cn(
-                                "h-10 w-10 rounded-full ring-4 ring-card bg-muted overflow-hidden border border-muted-foreground/5 shadow-sm transition-all",
-                                !ch.enabled && "opacity-40 grayscale"
-                              )}
-                              title={ch.platform + (ch.enabled ? "" : " (Disabled)")}
-                            >
-                              <img src={ch.avatar} alt={ch.username} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
-                            </div>
-                        ))}
-                      </div>
+                      {connectedChannels.length > 0 && (
+                        <div className="flex -space-x-3">
+                          {connectedChannels.map(ch => (
+                              <div
+                                key={ch.id}
+                                className={cn(
+                                  "h-10 w-10 rounded-full ring-4 ring-card bg-muted overflow-hidden border border-muted-foreground/5 shadow-sm transition-all",
+                                  !ch.enabled && "opacity-40 grayscale"
+                                )}
+                                title={ch.platform + (ch.enabled ? "" : " (Disabled)")}
+                              >
+                                <img src={ch.avatar} alt={ch.username} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+                              </div>
+                          ))}
+                        </div>
+                      )}
                       <div>
                         <div className="flex items-center gap-2.5">
                           <span className="text-sm font-bold text-foreground tracking-tight">
@@ -986,7 +1097,7 @@ export default function CampaignProfilePage() {
                           <Badge
                             variant="outline"
                             className={cn(
-                              "text-[10px] uppercase tracking-widest font-bold h-5 px-2 border-none",
+                              "text-xs uppercase tracking-widest font-bold h-5 px-2 border-none",
                               post.status === 'Draft' ? "bg-muted text-muted-foreground" :
                               post.status === 'Scheduled' ? "bg-amber-500/10 text-amber-500" :
                               post.status === 'Posted' ? "bg-emerald-500/10 text-emerald-500" :
@@ -1002,7 +1113,7 @@ export default function CampaignProfilePage() {
                             ) : post.status}
                           </Badge>
                         </div>
-                        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-semibold uppercase tracking-wider mt-0.5">
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-semibold uppercase tracking-wider mt-0.5">
                           <Clock className="w-3 h-3" />
                           {post.scheduledAt ? new Date(post.scheduledAt).toLocaleString() : 'Not scheduled'}
                         </div>
@@ -1042,9 +1153,12 @@ export default function CampaignProfilePage() {
                   </div>
 
                   <div className="space-y-4">
-                    <p className="text-foreground text-base leading-relaxed whitespace-pre-wrap font-medium tracking-tight">
-                      {post.content}
-                    </p>
+                    <Link 
+                      to={`/campaigns/${id}/posts/${post.id}`}
+                      className="block text-foreground text-base leading-relaxed whitespace-pre-wrap font-medium tracking-tight hover:text-primary transition-colors"
+                    >
+                      {post.content || "Empty Post Content"}
+                    </Link>
 
                     <PostMedia images={post.images} thumbs={post.thumbnailUrls} opts={post.optimizedUrls} />
                   </div>
@@ -1139,7 +1253,7 @@ export default function CampaignProfilePage() {
 
                     {post.status === 'Posted' ? (
                       <div className="flex items-center gap-4 self-start sm:self-auto">
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 text-[11px] text-emerald-500 font-bold uppercase tracking-wider">
+                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 text-xs text-emerald-500 font-bold uppercase tracking-wider">
                               <CheckCircle2 className="w-3.5 h-3.5" />
                               Published
                         </div>
@@ -1148,14 +1262,14 @@ export default function CampaignProfilePage() {
                             href={post.postUrl} 
                             target="_blank" 
                             rel="noopener noreferrer"
-                            className="flex items-center gap-1.5 text-[11px] font-bold text-primary hover:text-primary/80 transition-colors uppercase tracking-wider"
+                            className="flex items-center gap-1.5 text-xs font-bold text-primary hover:text-primary/80 transition-colors uppercase tracking-wider"
                           >
                             View Post <ExternalLink className="w-3.5 h-3.5" />
                           </a>
                         )}
                       </div>
                     ) : (
-                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted text-[11px] text-muted-foreground font-bold uppercase tracking-wider self-start sm:self-auto">
+                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted text-xs text-muted-foreground font-bold uppercase tracking-wider self-start sm:self-auto">
                             <AlertCircle className="w-3.5 h-3.5" />
                             {post.status}
                         </div>

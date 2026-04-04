@@ -27,7 +27,7 @@ public class PostsGetFunction
 
     [Function("GetPost")]
     public async Task<IActionResult> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "users/{userId}/campaigns/{campaignId}/posts/{postId}")] HttpRequest req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "api/users/{userId}/campaigns/{campaignId}/posts/{postId}")] HttpRequest req,
         string userId,
         string campaignId,
         string postId,

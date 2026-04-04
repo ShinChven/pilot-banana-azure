@@ -35,7 +35,7 @@ public class DashboardStatsFunction
 
     [Function("DashboardStats")]
     public async Task<HttpResponseData> RunAsync(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "stats")] HttpRequestData req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "api/stats")] HttpRequestData req,
         CancellationToken cancellationToken)
     {
         var auth = await _authHelper.GetUserFromRequestAsync(req, cancellationToken);

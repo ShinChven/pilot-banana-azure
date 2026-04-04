@@ -1,163 +1,111 @@
-# Pilot Banana 🍌
+# Pilot Banana
 
-Social media automation.
+Set-and-forget automation for high-volume social media campaigns.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tech Stack](https://img.shields.io/badge/Stack-Azure%20%7C%20React%2019%20%7C%20Gemini-blue.svg)]()
+## Repo structure
 
-Pilot Banana is a multi-tenant social media automation platform with **Generative AI** integration, designed for high-performance, set-and-forget content delivery. It provides robust data isolation for multiple users, allowing each to connect their own social media accounts as **channels**, **batch create** and **schedule posts**, and organize projects into **campaigns** for seamless cross-platform delivery. Leveraging integrated AI, Pilot Banana automatically generates context-aware text for your media files. Utilizing serverless **Azure Functions**, the platform scales with ease, empowering creators and brands to grow their presence without the manual grind.
+| Path | Description |
+|------|-------------|
+| `src/Pilot.Core` | Domain, DTOs, interfaces |
+| `src/Pilot.Infrastructure` | Cosmos DB, Blob, Key Vault |
+| `src/Pilot.Adapters` | X (Twitter) and future channel adapters |
+| `src/Pilot.Api` | Azure Functions HTTP API (Consumption) |
+| `src/Pilot.Orchestration` | Durable Functions (scheduling) |
+| `src/Pilot.Console` | React + Tailwind dashboard (Azure SWA) |
+| `infra/` | Optional Bicep/ARM/Terraform |
 
-![Pilot Banana dashboard](assets/screenshot.jpg)
+## Run locally
 
-## Why Pilot Banana? 🚀
+The project **can run locally** for full usage (dashboard, API, orchestration). You need Cosmos DB (emulator or Azure), Azurite for storage, and the two function apps on different ports.
 
-- 📦 **Batch Efficiency:** Save hours by utilizing powerful **batch generation** and **scheduling** tools to manage hundreds of posts simultaneously.
-- 🚀 **Orchestrated Campaigns:** Move beyond single posts. Design multi-phase, **cross-platform** campaigns that run themselves while you focus on the big picture.
-- ☁️ **Cloud-Native Scale:** Built with Azure Functions, Cosmos DB, and Blob Storage to ensure your automation scales from a single account to thousands without breaking a sweat.
-- 🎨 **Next-Gen Frontend:** A lightning-fast dashboard built with **React 19**, **Tailwind CSS 4**, and **Framer Motion** for a premium, "app-like" experience.
-- 🤖 **AI Content:** Leverage Google's Gemini AI to generate high-quality, context-aware posts from simple prompts or complex campaign strategies.
+Run the API on `7071`, the orchestration app on `7072`, and the web app on `5173`.
 
----
-
-## Technical Architecture
-
-Pilot Banana follows a clean, decoupled architecture designed for maintainability and cloud scalability.
-
-| Component | Responsibility | Tech Stack |
-|:---|:---|:---|
-| **Pilot.Console** | Modern Dashboard & Management UI | React 19, Tailwind 4, Vite |
-| **Pilot.Api** | Secure Entry Point & Business Logic | Azure Functions (HTTP) |
-| **Pilot.Orchestration** | Background Processing & Scheduling | Azure Functions (Queue/Timer) |
-| **Pilot.Core** | Domain Models & Shared Logic | .NET 9 |
-| **Pilot.Infrastructure** | Persistence, AI & Cloud Services | Cosmos DB, Gemini AI, Key Vault |
-| **Pilot.Adapters** | Platform-Specific Delivery (X/Twitter) | HttpClient + OAuth 2.0 PKCE |
-
----
-
-## Run locally 🛠️
-
-The project can run locally as a self-contained demo with:
-
-- Cosmos DB Emulator for database
-- Azurite for Blob, Queue, and Table storage
-- `Pilot.Api` on port `7071`
-- `Pilot.Orchestration` on port `7072`
-- `Pilot.Console` on port `5173`
-
-### Local demo setup
-
-#### 1. Start local dependencies
-
-```bash
-docker compose up -d
-```
-
-This starts:
-- Cosmos DB Emulator at `https://localhost:8081`
-- Cosmos Data Explorer at `http://localhost:1234`
-- Azurite Blob at `http://127.0.0.1:10000`
-- Azurite Queue at `http://127.0.0.1:10001`
-- Azurite Table at `http://127.0.0.1:10002`
-
-#### 2. Create local settings files
-
-Create these files if they do not already exist (you can copy from the `.example` files):
-- `src/Pilot.Api/local.settings.json`
-- `src/Pilot.Orchestration/local.settings.json`
-
-Ensure the following keys are configured for local use:
-
-```json
-"Cosmos__Endpoint": "https://localhost:8081",
-"Cosmos__Key": "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==",
-"Cosmos__DatabaseId": "pilot-banana",
-"Blob__ConnectionString": "UseDevelopmentStorage=true",
-"Auth__Jwt__Secret": "your-256-bit-secret-at-least-32-chars-long",
-"GEMINI_API_KEY": "YOUR_GEMINI_API_KEY"
-```
-
-- **Note:** The `Cosmos__Key` is the standard local Cosmos Emulator key. `GEMINI_API_KEY` is required for AI post generation.
-
-#### 3. Initialize the Cosmos database and containers
-
-Run:
-```bash
-dotnet run --project scripts/InitCosmos/InitCosmos.csproj
-```
-
-This bootstrap script creates:
-- Database `pilot-banana` and all required containers.
-- A demo admin user (default: `admin@example.com` / `ChangeMe123!`).
-- A set of default system prompts.
-- Sample post history for the dashboard demo.
-
-You can override the admin credentials:
-```bash
-SEED_EMAIL="demo@example.com" SEED_PASSWORD="BetterPassword123!" dotnet run --project scripts/InitCosmos/InitCosmos.csproj
-```
-
-#### 4. Restore and build the .NET solution
-
-From the repo root:
-```bash
-./build.sh
-```
-
-#### 5. Start the API function app
-
-In one terminal:
-```bash
-cd src/Pilot.Api
-func start --port 7071
-```
-
-#### 6. Start the orchestration function app
-
-In a second terminal:
-```bash
-cd src/Pilot.Orchestration
-func start --port 7072
-```
-
-#### 7. Install and start the frontend
-
-In a third terminal:
-```bash
-cd src/Pilot.Console
-npm install
-npm run dev
-```
-
-The dashboard will be available at: **`http://localhost:5173`**
-
-### 💡 Developer Tips
-
-- **Local Secret Storage:** When `KeyVault__VaultUri` is empty (default for local dev), secrets (like platform OAuth tokens) are stored as text files in your local application data folder:
-  - **macOS**: `~/Library/Application Support/PilotBanana/Secrets`
-  - **Windows**: `%AppData%\Local\PilotBanana\Secrets`
-- **Idempotent Seed:** The `InitCosmos` script is idempotent for normal local use: if the `users` container already has data, the script will skip the seeding process.
-
-> [!WARNING]
-> **Demo-only local configuration:** The local setup is optimized for speed and uses shared emulator credentials. Do not use this configuration as-is in Azure or any shared environment. For cloud deployments, use **Azure Key Vault** and **Managed Identities**.
-
----
-
-## X (Twitter) Configuration Guide 🐦
+## X (Twitter) Configuration Guide
 
 Pilot Banana uses **OAuth 2.0 with PKCE** for interacting with the X (formerly Twitter) API.
 
-1. **Set up your App** in the [X Developer Platform](https://console.x.com).
-2. **User Authentication Settings:**
-   - **App Permissions:** Set to `Read and Write`.
-   - **Type of App:** Select `Web App, Automated App or Bot`.
-   - **Callback URI:** `http://localhost:7071/api/channels/callback/x`.
-   - **Website URL:** Your local or production URL.
-3. **Generate Credentials:** Find your **Client ID** and **Client Secret** under the "Keys and Tokens" tab.
-4. **Configure Settings:** Add `XOAuth__ClientId` and `XOAuth__ClientSecret` to your `local.settings.json`.
+### 1. Set up the X Developer App
+1. Go to the [X Developer Portal](https://developer.twitter.com/en/portal/dashboard) and create a new Project/App.
+2. Under your new App, go to **User authentication settings** and click **Set up** (or Edit).
+3. Select **Web App, Automated App or Bot** if prompted.
+4. Enable **OAuth 2.0**.
+5. Set `Type of App` to **Web App**.
+6. Set your **Redirect URI** to:
+   * Local: `http://localhost:7071/api/channels/callback/x`
+   * Production: `https://<YOUR-API-APP-NAME>.azurewebsites.net/api/channels/callback/x`
+7. Save your settings. Take note of your **OAuth 2.0 Client ID** and **OAuth 2.0 Client Secret**.
 
-> [!NOTE]
-> **2026 Tiered Access:** Ensure your account has at least the **Free** tier (write-only) or **Basic** tier (read/write) enabled. Some features may require a minimum credit balance on the X Developer Platform.
+### 2. Configure `local.settings.json` (or Azure App Settings)
 
-## License
+Add the following under the `Values` section in your `Pilot.Api/local.settings.json` (and inside your Azure Environment variables for production):
 
-Pilot Banana is licensed under the [MIT License](LICENSE).
+```json
+"ApiBaseUrl": "http://localhost:7071",
+"XOAuth__ClientId": "<YOUR_OAUTH_2_CLIENT_ID>",
+"XOAuth__ClientSecret": "<YOUR_OAUTH_2_CLIENT_SECRET>",
+"XOAuth__ApiBaseUrl": "http://localhost:7071",
+"XOAuth__DashboardBaseUrl": "http://localhost:5173",
+"XOAuth__StateSigningSecret": "<OPTIONAL_RANDOM_STRING_FOR_CSRF_PROTECTION>"
+```
+
+* `ApiBaseUrl`: The public base URL for your API, used by MCP OAuth 2.1 discovery endpoints (`.well-known`).
+* `XOAuth__ApiBaseUrl`: The base URL for your API, used to construct the dynamic `redirect_uri` for X/Twitter OAuth.
+* `XOAuth__DashboardBaseUrl`: The frontend dashboard URL where users will be redirected after finishing the OAuth flow.
+* `XOAuth__StateSigningSecret`: *(Optional)* Used to sign the OAuth `state` parameter to prevent CSRF spoofing. Defaults to your system's JWT Secret if omitted.
+
+### 3. Advanced Adapter Overrides (Optional)
+If you need to mock the API or intercept traffic, you can utilize the `IHttpClientFactory` mocking patterns.
+
+### 4. Testing the Integration
+1. Start your API and Dashboard locally.
+
+## Model Context Protocol (MCP)
+
+Pilot Banana acts as an **MCP Server**, enabling your AI assistant (like Claude Desktop or Claude Code) to securely interact with your social media campaigns and data.
+
+### 1. Connection Methods
+
+#### Claude Desktop (Manual Config)
+Add the following to your `claude_desktop_config.json`:
+```json
+{
+  "mcpServers": {
+    "pilot-banana": {
+      "url": "http://localhost:7071/api/mcp",
+      "headers": {
+        "Authorization": "Bearer <YOUR_ACCESS_TOKEN>"
+      }
+    }
+  }
+}
+```
+*   **URL**: Use `http://localhost:7071/api/mcp` for local development or your production API URL.
+*   **Access Tokens**: Generate these in the Pilot Banana Dashboard under **Settings > MCP > Access Tokens**.
+
+#### OAuth 2.1 (Recommended)
+For clients supporting OAuth (like Claude Web or official connectors):
+1.  Navigate to **Settings > MCP > OAuth Clients** in the Dashboard.
+2.  Create a new client and use the provided configuration snippet.
+
+### 2. Available Tools
+
+Pilot Banana exposes the following tools to MCP-enabled AI assistants:
+
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `get_scheduled_stats` | Get total number of scheduled and total posts. | - |
+| `get_post_counts_by_date` | Get post success counts for the last 30 days. | `timezone_offset_minutes` |
+| `get_post_counts_by_campaign` | Get success counts grouped by campaign. | - |
+| `list_campaigns` | List all campaigns for the current user. | - |
+| `search_campaigns` | Search campaigns by name. | `query` |
+| `list_campaign_scheduled_posts` | List scheduled posts for a specific campaign. | `campaignId` |
+| `create_campaign` | Create a new campaign (Draft status). | `name`, `description` |
+| `batch_create_posts` | Bulk create posts with optional scheduling. | `campaignId`, `posts[]` |
+| `list_posts_without_text` | Find posts needing content generation. | `campaignId`, `page`, `pageSize` |
+| `batch_update_post_text` | Bulk update post content. | `campaignId`, `updates[]` |
+
+### 3. Usage Example
+Once connected, you can ask your AI:
+- *"How many posts are scheduled for tomorrow?"*
+- *"Find all posts in my 'Summer Launch' campaign that have no text and generate some captions for them."*
+- *"Create a new campaign called 'Spring Promo' for me."*

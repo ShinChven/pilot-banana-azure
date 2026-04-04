@@ -26,7 +26,7 @@ public class PromptsListFunction
 
     [Function("ListPrompts")]
     public async Task<HttpResponseData> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "prompts")] HttpRequestData req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "api/prompts")] HttpRequestData req,
         CancellationToken cancellationToken)
     {
         var auth = await _authHelper.GetUserFromRequestAsync(req, cancellationToken);

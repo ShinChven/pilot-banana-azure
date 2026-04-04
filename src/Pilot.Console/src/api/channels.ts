@@ -88,7 +88,7 @@ export function deleteChannel(id: string, token: string) {
 export function refreshChannelToken(id: string, token: string) {
   return apiPost<Record<string, unknown>>(`/channels/${id}/refresh`, undefined, token).then((res) => {
     if (!res.data || typeof res.data !== 'object') {
-      return res as { data?: RefreshChannelLinkResponse; error?: string; status: number };
+      return res as unknown as { data?: RefreshChannelLinkResponse; error?: string; status: number };
     }
 
     const raw = res.data as Record<string, unknown>;

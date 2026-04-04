@@ -227,7 +227,7 @@ export function AvatarPicker({ onSelect, selectedSeed, onCancel, className }: Av
                   className="w-full h-full object-contain"
                 />
                 <div className="absolute inset-0 bg-primary/40 opacity-0 group-hover:opacity-100 rounded-2xl transition-opacity flex items-center justify-center text-center p-1">
-                  <span className="text-[10px] font-bold text-white uppercase">{seed}</span>
+                  <span className="text-xs font-bold text-white uppercase">{seed}</span>
                 </div>
                 {localSelection === seed && (
                   <div className="absolute -top-1 -right-1 bg-primary text-primary-foreground rounded-full p-1 shadow-md">
@@ -259,7 +259,7 @@ export function AvatarPicker({ onSelect, selectedSeed, onCancel, className }: Av
           <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
             {filteredEmojiCategories.map((category) => (
               <div key={category.id} className={cn("mb-6", activeEmojiCategory !== category.id && !searchQuery && "hidden")}>
-                <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-3 px-1">{category.name}</h3>
+                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3 px-1">{category.name}</h3>
                 <div className="grid grid-cols-6 sm:grid-cols-8 gap-2">
                   {category.emojis.map((emoji, eIdx) => (
                     <button
@@ -295,7 +295,7 @@ export function AvatarPicker({ onSelect, selectedSeed, onCancel, className }: Av
               )}
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">Preview</p>
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-tight">Preview</p>
               <p className="text-xs font-semibold truncate text-foreground">{localSelection.startsWith('emoji:') ? 'Fluent Emoji' : localSelection}</p>
             </div>
           </div>

@@ -49,7 +49,7 @@ public class PostsSendFunction
 
     [Function("SendPost")]
     public async Task<IActionResult> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "users/{userId}/campaigns/{campaignId}/posts/{id}/send")] Microsoft.AspNetCore.Http.HttpRequest req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "api/users/{userId}/campaigns/{campaignId}/posts/{id}/send")] Microsoft.AspNetCore.Http.HttpRequest req,
         string userId, string campaignId, string id, CancellationToken cancellationToken)
     {
         var auth = await _authHelper.GetUserFromRequestAsync(req, cancellationToken);

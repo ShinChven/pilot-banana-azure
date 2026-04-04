@@ -26,7 +26,7 @@ public class PromptsUpdateFunction
 
     [Function("UpdatePrompt")]
     public async Task<HttpResponseData> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "patch", Route = "prompts/{id}")] HttpRequestData req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "patch", Route = "api/prompts/{id}")] HttpRequestData req,
         string id,
         CancellationToken cancellationToken)
     {

@@ -27,7 +27,7 @@ public class UsersDeleteFunction
 
     [Function("DeleteUser")]
     public async Task<HttpResponseData> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "delete", Route = "users/{id}")] HttpRequestData req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "delete", Route = "api/users/{id}")] HttpRequestData req,
         string id,
         CancellationToken cancellationToken)
     {

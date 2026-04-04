@@ -19,10 +19,14 @@ using Pilot.Infrastructure.Cosmos;
 using Pilot.Infrastructure.AI;
 using Pilot.Infrastructure.Media;
 using Pilot.Adapters;
+using Pilot.Api.Middleware;
 using Pilot.Infrastructure.KeyVault;
 
 var host = new HostBuilder()
-    .ConfigureFunctionsWebApplication()
+    .ConfigureFunctionsWebApplication(builder =>
+    {
+        builder.UseMiddleware<CorsExposeHeadersMiddleware>();
+    })
     .ConfigureAppConfiguration((context, builder) =>
     {
         var appDir = AppContext.BaseDirectory;
@@ -100,6 +104,7 @@ var host = new HostBuilder()
         services.AddMediaServices();
         services.AddPilotAuth(config);
         services.AddSingleton<RequestAuthHelper>();
+        services.AddSingleton<McpAuthHelper>();
         services.AddSingleton<PostResponseMapper>();
         services.AddSingleton<PasskeyChallengeService>();
     })

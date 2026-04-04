@@ -16,6 +16,7 @@ public class ImageOptimizer : IImageOptimizer
     private const int ThumbnailSize = 320;
     private const int DefaultJpegQuality = 95;
     private static readonly int[] XUploadQualities = [92, 88, 84, 80, 76, 72, 68, 64, 60];
+    private static readonly double[] XDownscaleFactors = [0.75, 0.5, 0.35];
 
     public bool Supports(string? contentType)
     {
@@ -100,7 +101,35 @@ public class ImageOptimizer : IImageOptimizer
             }));
         }
 
-        MemoryStream? best = null;
+        // First pass: try lowering quality at current resolution
+        var result = await TryEncodeUnderTarget(image, targetBytes, cancellationToken);
+        if (result != null)
+            return (result, "image/jpeg");
+
+        // Second pass: progressively downscale and retry quality ladder
+        foreach (var factor in XDownscaleFactors)
+        {
+            var newWidth = Math.Max(1, (int)(image.Width * factor));
+            var newHeight = Math.Max(1, (int)(image.Height * factor));
+            using var scaled = image.Clone(x => x.Resize(newWidth, newHeight));
+
+            var scaledResult = await TryEncodeUnderTarget(scaled, targetBytes, cancellationToken);
+            if (scaledResult != null)
+                return (scaledResult, "image/jpeg");
+        }
+
+        // Last resort: smallest scale, lowest quality — return whatever we get
+        var lastWidth = Math.Max(1, (int)(image.Width * XDownscaleFactors[^1]));
+        var lastHeight = Math.Max(1, (int)(image.Height * XDownscaleFactors[^1]));
+        using var lastScaled = image.Clone(x => x.Resize(lastWidth, lastHeight));
+        var fallback = new MemoryStream();
+        await lastScaled.SaveAsJpegAsync(fallback, new JpegEncoder { Quality = XUploadQualities[^1] }, cancellationToken);
+        fallback.Position = 0;
+        return (fallback, "image/jpeg");
+    }
+
+    private static async Task<MemoryStream?> TryEncodeUnderTarget(Image image, long targetBytes, CancellationToken cancellationToken)
+    {
         foreach (var quality in XUploadQualities)
         {
             var output = new MemoryStream();
@@ -108,16 +137,11 @@ public class ImageOptimizer : IImageOptimizer
             output.Position = 0;
 
             if (output.Length <= targetBytes)
-                return (output, "image/jpeg");
+                return output;
 
-            best?.Dispose();
-            best = output;
+            output.Dispose();
         }
 
-        if (best == null)
-            throw new InvalidOperationException("Failed to generate X upload image.");
-
-        best.Position = 0;
-        return (best, "image/jpeg");
+        return null;
     }
 }

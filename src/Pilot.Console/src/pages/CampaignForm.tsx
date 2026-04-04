@@ -227,7 +227,7 @@ export default function CampaignFormPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 pb-20">
+    <div className="w-full space-y-8 pb-20">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => navigate(isEditing ? `/campaigns/${id}` : '/campaigns')}>
           <ArrowLeft className="w-5 h-5" />
@@ -377,7 +377,7 @@ export default function CampaignFormPage() {
                         <div className="min-w-0">
                           <p className="text-sm font-bold truncate text-foreground">{channel.username}</p>
                           {channel.handle && (
-                            <p className="text-[10px] text-muted-foreground truncate leading-tight mb-0.5">{channel.handle}</p>
+                            <p className="text-xs text-muted-foreground truncate leading-tight mb-0.5">{channel.handle}</p>
                           )}
                           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                             {getPlatformIcon(channel.platform)}

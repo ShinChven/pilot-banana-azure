@@ -30,7 +30,7 @@ public class UsersUpdateFunction
 
     [Function("UpdateUser")]
     public async Task<HttpResponseData> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "patch", Route = "users/{id}")] HttpRequestData req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "patch", Route = "api/users/{id}")] HttpRequestData req,
         string id,
         CancellationToken cancellationToken)
     {

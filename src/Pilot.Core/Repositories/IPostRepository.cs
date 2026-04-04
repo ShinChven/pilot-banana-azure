@@ -23,4 +23,5 @@ public interface IPostRepository
     /// </summary>
     Task<IReadOnlyList<Post>> GetReadyToPublishAsync(DateTimeOffset upToTime, PostStatus status = PostStatus.Scheduled, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Post>> GetStaleByStatusAsync(PostStatus status, DateTimeOffset updatedBefore, CancellationToken cancellationToken = default);
+    Task<(IReadOnlyList<Post> Items, int Total)> GetPostsWithoutTextAsync(string campaignId, int page, int pageSize, PostStatus? status = null, CancellationToken cancellationToken = default);
 }

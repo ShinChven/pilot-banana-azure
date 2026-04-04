@@ -320,4 +320,41 @@ public class PostRepository : IPostRepository
 
         return list;
     }
+
+    public async Task<(IReadOnlyList<Post> Items, int Total)> GetPostsWithoutTextAsync(string campaignId, int page, int pageSize, PostStatus? status = null, CancellationToken cancellationToken = default)
+    {
+        var filterBuilder = new System.Text.StringBuilder("WHERE c.campaignId = @campaignId AND (IS_NULL(c.text) OR c.text = \"\")");
+        var parameters = new List<(string Name, object Value)> { ("@campaignId", campaignId) };
+
+        if (status.HasValue)
+        {
+            filterBuilder.Append(" AND c.status = @status");
+            parameters.Add(("@status", (int)status.Value));
+        }
+
+        var filterClause = filterBuilder.ToString();
+
+        // 1. Get total count
+        var countQueryDef = new QueryDefinition($"SELECT VALUE COUNT(1) FROM c {filterClause}");
+        foreach (var p in parameters) countQueryDef.WithParameter(p.Name, p.Value);
+
+        var countIterator = _container.GetItemQueryIterator<int>(countQueryDef, requestOptions: new QueryRequestOptions { PartitionKey = new PartitionKey(campaignId) });
+        int total = 0;
+        if (countIterator.HasMoreResults)
+        {
+            var resp = await countIterator.ReadNextAsync(cancellationToken);
+            total = resp.FirstOrDefault();
+        }
+
+        // 2. Get paginated page
+        var offset = (page - 1) * pageSize;
+        var queryDef = new QueryDefinition($"SELECT * FROM c {filterClause} ORDER BY c.createdAt DESC OFFSET @offset LIMIT @limit")
+            .WithParameter("@offset", offset)
+            .WithParameter("@limit", pageSize);
+        foreach (var p in parameters) queryDef.WithParameter(p.Name, p.Value);
+
+        var list = await ReadPostsAsync(queryDef, new QueryRequestOptions { PartitionKey = new PartitionKey(campaignId) }, cancellationToken);
+
+        return (list, total);
+    }
 }

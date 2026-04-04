@@ -16,11 +16,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/src/components/ui/select";
-import { Sparkles, Loader2, AlertCircle } from 'lucide-react';
+import { Sparkles, Loader2, AlertCircle, Image as ImageIcon } from 'lucide-react';
 import { listPrompts, PromptResponse } from '../api/prompts';
 import { batchGenerateText } from '../api/posts';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
+import { Switch } from './ui/switch';
+import { Label } from './ui/label';
 
 interface BatchAiGenerateModalProps {
   isOpen: boolean;
@@ -41,6 +43,7 @@ export function BatchAiGenerateModal({
   const [prompts, setPrompts] = React.useState<PromptResponse[]>([]);
   const [selectedPromptId, setSelectedPromptId] = React.useState<string>("");
   const [promptText, setPromptText] = React.useState<string>("");
+  const [includeImages, setIncludeImages] = React.useState(true);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isLoadingPrompts, setIsLoadingPrompts] = React.useState(false);
 
@@ -77,7 +80,7 @@ export function BatchAiGenerateModal({
 
     setIsSubmitting(true);
     try {
-      const res = await batchGenerateText(user.id, campaignId, selectedPostIds, promptText.trim(), token);
+      const res = await batchGenerateText(user.id, campaignId, selectedPostIds, promptText.trim(), token, includeImages);
       if (res.data) {
         toast.success(`Started generation for ${res.data.count} posts`, {
           description: "You can track progress in the AI Task Manager."
@@ -134,7 +137,7 @@ export function BatchAiGenerateModal({
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium">Prompt Content</label>
               {promptText && (
-                <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">
+                <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">
                   Editable
                 </span>
               )}
@@ -145,10 +148,29 @@ export function BatchAiGenerateModal({
               value={promptText}
               onChange={(e) => setPromptText(e.target.value)}
             />
-            <p className="text-[11px] text-muted-foreground flex gap-1.5 items-start px-1">
+            <p className="text-xs text-muted-foreground flex gap-1.5 items-start px-1">
               <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-              This prompt will be sent to Gemini along with any images attached to each selected post.
+              {includeImages 
+                ? "This prompt will be sent to Gemini along with any images attached to each selected post."
+                : "This prompt will be sent to Gemini. No images will be provided for this generation."}
             </p>
+          </div>
+
+          <div className="flex items-center justify-between p-4 bg-muted/20 rounded-2xl border border-muted-foreground/5">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary/10 rounded-xl">
+                <ImageIcon className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex flex-col">
+                <Label htmlFor="include-images" className="text-sm font-bold cursor-pointer">Provide images for generation</Label>
+                <span className="text-xs text-muted-foreground">Toggle whether AI should analyze post images</span>
+              </div>
+            </div>
+            <Switch 
+              id="include-images" 
+              checked={includeImages} 
+              onCheckedChange={setIncludeImages}
+            />
           </div>
         </div>
 

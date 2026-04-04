@@ -21,7 +21,9 @@ export default function LoginPage() {
   const [password, setPassword] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
 
-  const from = (location.state as any)?.from?.pathname || '/';
+  const searchParams = new URLSearchParams(location.search);
+  const returnUrl = searchParams.get('returnUrl');
+  const from = returnUrl || (location.state as any)?.from?.pathname || '/';
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,13 +54,8 @@ export default function LoginPage() {
     }
   };
 
-  function base64ToBuffer(base64: string): ArrayBuffer {
-    const binaryString = atob(base64.replace(/-/g, '+').replace(/_/g, '/'))
-    const bytes = new Uint8Array(binaryString.length)
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i)
-    }
-    return bytes.buffer
+  function stringToBuffer(str: string): ArrayBuffer {
+    return new TextEncoder().encode(str).buffer;
   }
 
   function bufferToBase64(buffer: ArrayBuffer): string {
@@ -79,7 +76,7 @@ export default function LoginPage() {
 
       const credentialRequestOptions: CredentialRequestOptions = {
         publicKey: {
-          challenge: base64ToBuffer(options.challenge),
+          challenge: stringToBuffer(options.challenge),
           rpId: options.rpId,
           userVerification: options.userVerification,
           timeout: options.timeout
@@ -234,6 +231,22 @@ export default function LoginPage() {
                 {passkeyLoading ? 'Verifying...' : 'Sign in with Passkey'}
               </span>
             </Button>
+          </div>
+
+          <div className="mt-8 flex items-center justify-center gap-4 text-xs text-muted-foreground">
+            <button 
+              onClick={() => navigate('/terms')}
+              className="hover:text-primary transition-colors underline underline-offset-4"
+            >
+              Terms of Service
+            </button>
+            <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
+            <button 
+              onClick={() => navigate('/privacy')}
+              className="hover:text-primary transition-colors underline underline-offset-4"
+            >
+              Privacy Policy
+            </button>
           </div>
         </div>
       </motion.div>

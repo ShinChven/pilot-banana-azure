@@ -22,4 +22,7 @@ public class CosmosContext
     public Container Prompts => _database.GetContainer(_options.PromptsContainer);
     public Container PostHistory => _database.GetContainer(_options.PostHistoryContainer);
     public Container PostAiTasks => _database.GetContainer(_options.PostAiTasksContainer);
+    public Container UserAccessTokens => _database.GetContainer(_options.UserAccessTokensContainer);
+    public Container UserApiClients => _database.GetContainer(_options.UserApiClientsContainer);
+    public Container OAuthAuthorizationCodes => _database.GetContainer(_options.OAuthAuthorizationCodesContainer);
 }

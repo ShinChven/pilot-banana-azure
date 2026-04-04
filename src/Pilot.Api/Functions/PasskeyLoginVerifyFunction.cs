@@ -53,7 +53,7 @@ public class PasskeyLoginVerifyFunction
 
     [Function("PasskeyLoginVerify")]
     public async Task<HttpResponseData> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "auth/passkeys/login-verify")] HttpRequestData req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "api/auth/passkeys/login-verify")] HttpRequestData req,
         CancellationToken cancellationToken)
     {
         PasskeyLoginVerifyBody? body;
@@ -116,16 +116,35 @@ public class PasskeyLoginVerifyFunction
         // it passed OS-level biometrics. However, IN PRODUCTION you MUST cryptographically verify the `signature`
         // against `passkey.PublicKey`, `authenticatorData`, and `clientDataJSON`.
 
-        // As a minimal demo: we just check if it was decoded right and they know the cred ID.
-        // (A real implementation would use something like Fido2NetLib here)
-        var clientDataBytes = DecodeBase64Url(body.ClientDataJSON);
-        var clientDataStr = System.Text.Encoding.UTF8.GetString(clientDataBytes);
-        if (!clientDataStr.Contains(expectedChallenge))
+        // Verify challenge from clientDataJSON (challenge is base64url-encoded per WebAuthn spec)
+        try
         {
-            _logger.LogWarning("Passkey login failed: Challenge mismatch.");
-            var unauth = req.CreateResponse(HttpStatusCode.Unauthorized);
-            await unauth.WriteAsJsonAsync(new { error = "Challenge verification failed." }, cancellationToken);
-            return unauth;
+            var clientDataBytes = DecodeBase64Url(body.ClientDataJSON);
+            var clientDataStr = System.Text.Encoding.UTF8.GetString(clientDataBytes);
+            var clientData = JsonSerializer.Deserialize<JsonElement>(clientDataStr);
+            var challengeFromClient = clientData.GetProperty("challenge").GetString();
+            if (challengeFromClient == null)
+            {
+                var bad = req.CreateResponse(HttpStatusCode.BadRequest);
+                await bad.WriteAsJsonAsync(new { error = "Challenge not found in clientDataJSON." }, cancellationToken);
+                return bad;
+            }
+            var decodedChallengeBytes = DecodeBase64Url(challengeFromClient);
+            var decodedChallenge = System.Text.Encoding.UTF8.GetString(decodedChallengeBytes);
+            if (decodedChallenge != expectedChallenge)
+            {
+                _logger.LogWarning("Passkey login failed: Challenge mismatch for session {SessionId}", body.SessionId);
+                var unauth = req.CreateResponse(HttpStatusCode.Unauthorized);
+                await unauth.WriteAsJsonAsync(new { error = "Challenge verification failed." }, cancellationToken);
+                return unauth;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to verify challenge for passkey login session {SessionId}", body.SessionId);
+            var bad = req.CreateResponse(HttpStatusCode.BadRequest);
+            await bad.WriteAsJsonAsync(new { error = "Failed to decode clientDataJSON." }, cancellationToken);
+            return bad;
         }
 
         // Login successful

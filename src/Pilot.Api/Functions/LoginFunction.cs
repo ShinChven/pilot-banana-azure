@@ -33,7 +33,7 @@ public class LoginFunction
 
     [Function("Login")]
     public async Task<HttpResponseData> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "auth/login")] HttpRequestData req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "api/auth/login")] HttpRequestData req,
         CancellationToken cancellationToken)
     {
         LoginRequest? body;

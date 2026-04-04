@@ -1,12 +1,6 @@
 import * as React from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle
-} from "@/src/components/ui/card";
+// Card imports removed
 import { Button } from "@/src/components/ui/button";
 import {
   Avatar,
@@ -22,7 +16,9 @@ import {
   AlertCircle,
   Loader2,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  ArrowRight,
+  Calendar as CalendarIcon
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { getCampaignHistory } from '../api/history';
@@ -98,7 +94,7 @@ export default function CampaignHistoryPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="space-y-6 w-full">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => navigate(`/campaigns/${id}`)}>
           <ArrowLeft className="w-5 h-5" />
@@ -109,120 +105,168 @@ export default function CampaignHistoryPage() {
         </div>
       </div>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle>History Log</CardTitle>
-          <CardDescription>Total {totalCount} attempts found</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div>
+        {isLoading ? (
+          <div className="flex justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : history.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 px-4 text-center rounded-2xl border border-dashed border-muted-foreground/20 bg-muted/10">
+            <div className="h-12 w-12 rounded-full bg-muted/50 flex items-center justify-center mb-4">
+              <Clock className="w-6 h-6 text-muted-foreground/50" />
             </div>
-          ) : history.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground border border-dashed rounded-lg">
-              No history found for this campaign.
+            <h3 className="text-lg font-bold text-foreground">No History Found</h3>
+            <p className="text-sm text-muted-foreground max-w-md mt-1">
+              There is no sending history recorded for this campaign yet.
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-col">
+            {/* List Header - Desktop Only */}
+            <div className="hidden lg:grid lg:grid-cols-[180px_1fr_120px_180px] items-center gap-4 px-6 py-4 bg-muted/40 border-b border-muted-foreground/10 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70">
+              <span className="text-center">Account</span>
+              <span>Status / Message</span>
+              <span>Time</span>
+              <span className="text-right">Actions</span>
             </div>
-          ) : (
-            <div className="space-y-1">
+
+            {/* List Items */}
+            <div className="divide-y divide-muted-foreground/5">
               {history.map((item) => (
-                <div key={item.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl hover:bg-muted/50 border border-transparent hover:border-muted-foreground/10 transition-colors gap-4">
-                  <div className="flex items-center gap-4 flex-1 min-w-0">
-                    <div className="relative shrink-0">
-                      <Avatar className="h-10 w-10 border border-muted-foreground/10">
+                <div key={item.id} className="group hover:bg-primary/[0.02] transition-all duration-300 px-6 py-5 flex flex-col gap-4 lg:grid lg:grid-cols-[180px_1fr_120px_180px] lg:items-center lg:gap-4">
+                  
+                  {/* Col 1: Account / Avatar */}
+                  <div className="flex lg:flex-row items-center gap-3">
+                    <div className="relative shrink-0 transition-transform group-hover:scale-105 duration-500">
+                      <Avatar className="h-10 w-10 border border-muted-foreground/10 shadow-sm">
                         <AvatarImage src={item.avatarUrl} alt={item.displayName || item.username} />
-                        <AvatarFallback className="bg-primary/5 text-primary text-[10px]">
+                        <AvatarFallback className="bg-primary/5 text-primary text-xs font-bold">
                           {(item.displayName || item.username || "??").substring(0, 2).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       <div className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-background flex items-center justify-center border border-muted-foreground/10 shadow-sm">
-                        {getPlatformIcon(item.platform, "h-2 w-2")}
+                        {getPlatformIcon(item.platform, "h-2.5 w-2.5")}
                       </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-sm font-bold truncate max-w-[120px]" title={item.displayName || item.username}>{item.displayName || item.username || "Deleted Account"}</span>
-                        <Badge variant="outline" className={cn(
-                          "text-[10px] uppercase font-black px-2 h-5 border-none",
-                          item.status === 'Completed' ? "bg-emerald-500/10 text-emerald-500" : "bg-destructive/10 text-destructive"
-                        )}>
-                          {item.status}
-                        </Badge>
-                      </div>
-                      {item.status === 'Failed' ? (
-                        <p className="text-xs text-destructive font-medium line-clamp-2 italic mb-1" title={item.errorMessage}>
-                          {item.errorMessage || "Unknown error occurred"}
-                        </p>
-                      ) : (
-                        <p className="text-xs text-muted-foreground line-clamp-1 italic mb-1">
-                          Published
-                        </p>
-                      )}
-                      <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
-                        <Clock className="w-3 h-3" />
-                        {new Date(item.postedAt).toLocaleString()}
-                      </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="font-bold text-sm truncate text-foreground/90 group-hover:text-primary transition-colors" title={item.displayName || item.username}>
+                        {item.displayName || item.username || "Deleted Account"}
+                      </span>
+                      <span className="text-[10px] font-medium text-muted-foreground/70 truncate flex items-center gap-1">
+                        ID: {item.userId.slice(0, 8)}...
+                      </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+
+                  {/* Col 2: Status / Message */}
+                  <div className="min-w-0 flex flex-col gap-1.5">
+                    <Badge variant="outline" className={cn(
+                      "text-[9px] uppercase font-black px-1.5 h-4 border-none shadow-sm w-fit",
+                      item.status === 'Completed' ? "bg-emerald-500/10 text-emerald-500" : "bg-destructive/10 text-destructive"
+                    )}>
+                      {item.status}
+                    </Badge>
+                    {item.status === 'Failed' ? (
+                      <p className="text-xs text-destructive font-semibold line-clamp-2 mt-0.5 flex items-start gap-1" title={item.errorMessage || "Unknown error"}>
+                        <AlertCircle className="w-3 h-3 flex-shrink-0 mt-0.5" />
+                        {item.errorMessage || "Error occurred during posting."}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium line-clamp-1 flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3 flex-shrink-0" />
+                        Published Successfully
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Col 3: Time */}
+                  <div className="flex flex-row lg:flex-col gap-3 lg:gap-1 text-xs">
+                    <div className="flex items-center gap-1.5 text-muted-foreground font-semibold">
+                      <CalendarIcon className="w-3.5 h-3.5 text-primary/50" />
+                      {new Date(item.postedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </div>
+                    <div className="flex items-center gap-1.5 font-black text-foreground/70">
+                      <Clock className="w-3.5 h-3.5 text-primary/50" />
+                      {new Date(item.postedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}
+                    </div>
+                  </div>
+
+                  {/* Col 4: Actions */}
+                  <div className="flex items-center justify-end gap-2 shrink-0">
                     {item.postUrl && (
-                      <Button variant="ghost" size="sm" className="h-9 gap-1.5 px-4 rounded-full font-bold hover:bg-primary/5 text-primary" asChild>
-                        <a href={item.postUrl} target="_blank" rel="noopener noreferrer">
-                          View Post <ExternalLink className="w-3.5 h-3.5" />
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="px-3 h-9 rounded-xl bg-muted/30 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all font-bold group/link" 
+                        asChild 
+                        title="View on platform"
+                      >
+                        <a href={item.postUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5">
+                          View
+                          <ExternalLink className="w-3.5 h-3.5 opacity-50 group-hover/link:opacity-100" />
                         </a>
                       </Button>
                     )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="px-4 h-9 rounded-xl bg-primary/5 text-primary hover:bg-primary/10 transition-all font-bold"
+                      onClick={() => navigate(`/campaigns/${id}/posts/${item.postId}`)}
+                    >
+                      Manage
+                      <ArrowRight className="w-4 h-4 ml-1.5" />
+                    </Button>
                   </div>
                 </div>
               ))}
             </div>
-          )}
 
-          {/* Pagination Controller */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 bg-muted/20 border-t border-muted-foreground/10 -mx-6 -mb-6 mt-6">
-            <div className="text-sm text-muted-foreground text-center sm:text-left">
-              Showing <span className="font-semibold text-foreground">{history.length > 0 ? (page - 1) * pageSize + 1 : 0}</span> to <span className="font-semibold text-foreground">{(page - 1) * pageSize + history.length}</span> of <span className="font-semibold text-foreground">{totalCount}</span> attempts
-            </div>
-            <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Rows per page:</span>
-                <select
-                  className="bg-transparent text-sm font-medium focus:outline-none cursor-pointer"
-                  value={pageSize}
-                  onChange={(e) => { updateQueryParams({ pageSize: Number(e.target.value), page: 1 }); }}
-                >
-                  {[10, 25, 50, 100].map(size => (
-                    <option key={size} value={size}>{size}</option>
-                  ))}
-                </select>
+            {/* Pagination Controller */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 bg-muted/20 border-t border-muted-foreground/10 border-b border-b-muted-foreground/5">
+              <div className="text-sm text-muted-foreground font-medium text-center sm:text-left">
+                Showing <span className="font-bold text-foreground">{history.length > 0 ? (page - 1) * pageSize + 1 : 0}</span> to <span className="font-bold text-foreground">{(page - 1) * pageSize + history.length}</span> of <span className="font-bold text-foreground">{totalCount}</span> attempts
               </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-8 w-8 rounded-lg border-muted-foreground/10"
-                  onClick={() => updateQueryParams({ page: Math.max(1, page - 1) })}
-                  disabled={page === 1 || isLoading}
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </Button>
-                <div className="text-sm font-medium min-w-[60px] text-center">
-                  Page {page} of {totalPages || 1}
+              <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-muted-foreground">Rows per page:</span>
+                  <select
+                    className="bg-transparent text-sm font-bold text-foreground focus:outline-none cursor-pointer hover:text-primary transition-colors"
+                    value={pageSize}
+                    onChange={(e) => { updateQueryParams({ pageSize: Number(e.target.value), page: 1 }); }}
+                  >
+                    {[10, 25, 50, 100].map(size => (
+                      <option key={size} value={size}>{size}</option>
+                    ))}
+                  </select>
                 </div>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-8 w-8 rounded-lg border-muted-foreground/10"
-                  onClick={() => updateQueryParams({ page: Math.min(totalPages, page + 1) })}
-                  disabled={page >= totalPages || isLoading}
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8 rounded-lg border-muted-foreground/10 hover:bg-primary/5 hover:text-primary hover:border-primary/20 transition-all"
+                    onClick={() => updateQueryParams({ page: Math.max(1, page - 1) })}
+                    disabled={page === 1 || isLoading}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <div className="text-sm font-bold min-w-[80px] text-center text-muted-foreground">
+                    Page <span className="text-foreground">{page}</span> of {totalPages || 1}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8 rounded-lg border-muted-foreground/10 hover:bg-primary/5 hover:text-primary hover:border-primary/20 transition-all"
+                    onClick={() => updateQueryParams({ page: Math.min(totalPages, page + 1) })}
+                    disabled={page >= totalPages || isLoading}
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        )}
+      </div>
     </div>
   );
 }

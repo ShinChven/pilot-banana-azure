@@ -42,7 +42,7 @@ public class AiTaskRetryFunction
 
     [Function("RetryAiTask")]
     public async Task<IActionResult> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "users/{userId}/ai-tasks/{taskId}/retry")] HttpRequest req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "api/users/{userId}/ai-tasks/{taskId}/retry")] HttpRequest req,
         string userId,
         string taskId,
         CancellationToken cancellationToken)

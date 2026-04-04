@@ -31,7 +31,7 @@ public class ChannelsRefreshFunction
 
     [Function("RefreshChannelToken")]
     public async Task<HttpResponseData> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "channels/{id}/refresh")] HttpRequestData req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "api/channels/{id}/refresh")] HttpRequestData req,
         string id,
         CancellationToken cancellationToken)
     {

@@ -36,7 +36,7 @@ public class CampaignHistoryListFunction
 
     [Function("CampaignHistoryList")]
     public async Task<IActionResult> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "users/{userId}/campaigns/{campaignId}/history")] HttpRequest req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "api/users/{userId}/campaigns/{campaignId}/history")] HttpRequest req,
         string userId, string campaignId, CancellationToken cancellationToken)
     {
         var auth = await _authHelper.GetUserFromRequestAsync(req, cancellationToken);

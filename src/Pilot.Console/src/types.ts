@@ -53,6 +53,10 @@ export interface Campaign {
   thumbnail: string;
   totalPosts?: number;
   postedPosts?: number;
+  draftPosts?: number;
+  scheduledPosts?: number;
+  failedPosts?: number;
+  generatingPosts?: number;
 }
 
 export interface Prompt {

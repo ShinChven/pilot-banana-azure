@@ -23,7 +23,7 @@ public class PromptsGetFunction
 
     [Function("GetPrompt")]
     public async Task<HttpResponseData> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "prompts/{id}")] HttpRequestData req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "api/prompts/{id}")] HttpRequestData req,
         string id,
         CancellationToken cancellationToken)
     {

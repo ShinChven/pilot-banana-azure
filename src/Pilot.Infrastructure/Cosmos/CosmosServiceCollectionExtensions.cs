@@ -39,6 +39,9 @@ public static class CosmosServiceCollectionExtensions
         services.AddSingleton<IPromptRepository, PromptRepository>();
         services.AddSingleton<IPostHistoryRepository, PostHistoryRepository>();
         services.AddSingleton<IPostAiTaskRepository, PostAiTaskRepository>();
+        services.AddSingleton<IUserAccessTokenRepository, UserAccessTokenRepository>();
+        services.AddSingleton<IUserApiClientRepository, UserApiClientRepository>();
+        services.AddSingleton<IOAuthAuthorizationCodeRepository, OAuthAuthorizationCodeRepository>();
 
         return services;
         }}
