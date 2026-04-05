@@ -2,6 +2,8 @@
 
 Set-and-forget automation for high-volume social media campaigns.
 
+![](assets/screenshot.jpg)
+
 ## Repo structure
 
 | Path | Description |
